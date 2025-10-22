@@ -9,6 +9,7 @@ import { Repository, QueryFailedError } from 'typeorm';
 import { Goal } from './goal.entity';
 import { CreateGoalPayload } from './goal.dto';
 import { CustomException } from 'src/common/exceptions/custom-exception';
+import { GoalAssessmentBy } from 'src/goal-assessment-by/goal-assessment-by.entity';
 
 @Injectable()
 export class GoalService {
@@ -29,11 +30,13 @@ export class GoalService {
     }
   }
 
-  async getGoal(goalId: string): Promise<Goal> {
+  async getGoal(
+    goalId: string,
+  ): Promise<Goal & { goalAssessmentBy: GoalAssessmentBy[] }> {
     try {
       const goal = await this.goalRepository.findOne({
         where: { goalId },
-        relations: ['goalAssessmentBy'], // Include related data if needed
+        relations: ['goalAssessmentBy', 'goalAssessmentBy.gradedByUser'],
       });
 
       if (!goal) {
@@ -52,11 +55,13 @@ export class GoalService {
     }
   }
 
-  async getAllGoals(): Promise<Goal[]> {
+  async getAllGoals(): Promise<
+    (Goal & { goalAssessmentBy: GoalAssessmentBy[] })[]
+  > {
     //TODO: order maybe or paging
     try {
       return await this.goalRepository.find({
-        relations: ['goalAssessmentBy'],
+        relations: ['goalAssessmentBy', 'goalAssessmentBy.gradedByUser'],
         order: { created: 'DESC' },
       });
     } catch (error) {

@@ -1,4 +1,10 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity({ name: 'hrams_user', schema: 'public', synchronize: true })
 export class HramsUser {
@@ -6,14 +12,14 @@ export class HramsUser {
   userId: string;
 
   @Column()
-  username: string;
+  koreanName: string;
 
-  @Column()
+  @Column({ unique: true })
   email: string;
 
-  @Column()
+  @CreateDateColumn()
   created: Date;
 
-  @Column()
+  @UpdateDateColumn()
   updated: Date;
 }

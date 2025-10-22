@@ -19,10 +19,12 @@ export class GoalAssessmentByService {
     createGoalAssessmentByPayload: CreateGoalAssessmentByPayload,
   ): Promise<GoalAssessmentBy> {
     try {
-      const goalAssessmentBy = this.goalAssessmentByRepository.create(
+      const result = await this.goalAssessmentByRepository.upsert(
         createGoalAssessmentByPayload,
+        ['goalId', 'gradedBy'],
       );
-      return await this.goalAssessmentByRepository.save(goalAssessmentBy);
+
+      return result.generatedMaps[0] as GoalAssessmentBy;
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);
     }

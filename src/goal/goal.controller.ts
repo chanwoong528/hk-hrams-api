@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param } from '@nestjs/common';
 import { CreateGoalPayload } from './goal.dto';
 import { GoalService } from './goal.service';
 import { Goal } from './goal.entity';
@@ -24,6 +24,14 @@ export class GoalController {
     return {
       statusCode: 200,
       message: 'Goals fetched successfully',
+      data,
+    };
+  }
+  @Get(':id') async getGoal(@Param('id') id: string): Promise<Response<Goal>> {
+    const data = await this.goalService.getGoal(id);
+    return {
+      statusCode: 200,
+      message: 'Goal fetched successfully',
       data,
     };
   }

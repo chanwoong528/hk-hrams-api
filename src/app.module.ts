@@ -9,6 +9,8 @@ import { GoalAssessmentByModule } from './goal-assessment-by/goal-assessment-by.
 import { PerformanceAppraisalModule } from './performance-appraisal/performance-appraisal.module';
 import { PerformanceAppraisalByModule } from './performance-appraisal-by/performance-appraisal-by.module';
 import { HramsUserModule } from './hrams-user/hrams-user.module';
+import { DepartmentModule } from './department/department.module';
+import { HramsUserDepartmentModule } from './hrams-user-department/hrams-user-department.module';
 
 @Module({
   imports: [
@@ -48,6 +50,8 @@ import { HramsUserModule } from './hrams-user/hrams-user.module';
     PerformanceAppraisalModule,
     PerformanceAppraisalByModule,
     HramsUserModule,
+    DepartmentModule,
+    HramsUserDepartmentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

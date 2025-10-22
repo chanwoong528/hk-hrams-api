@@ -10,14 +10,15 @@ export class QueryException extends BadRequestException {
     this.domainName = domainName;
   }
   public handleQueryFailedError(error: QueryFailedError | Error) {
+    this.logger.error(`${this.domainName} - ${error.message}`);
     if (error.message.includes('duplicate key')) {
-      return `${this.domainName} - Duplicate key error`;
+      return `${this.domainName} - Duplicate key error \n\n${error.message}`;
     }
     if (error.message.includes('foreign key')) {
-      return `${this.domainName} - Foreign key error`;
+      return `${this.domainName} - Foreign key error \n\n${error.message}`;
     }
-    if (error.message.includes('not null')) {
-      return `${this.domainName} - Not null error`;
+    if (error.message.includes('not-null')) {
+      return `${this.domainName} - some field is required \n${error.message}`;
     }
 
     this.logger.error(`${this.domainName} - ${error.message}`);

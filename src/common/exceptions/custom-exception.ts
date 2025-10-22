@@ -1,4 +1,4 @@
-import { BadRequestException, Logger } from '@nestjs/common';
+import { BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import QueryException from './query-exception';
 
@@ -10,7 +10,7 @@ export class CustomException extends BadRequestException {
     this.domainName = domainName;
   }
 
-  public handleException(error: QueryFailedError | Error) {
+  public handleException(error: QueryFailedError | Error | NotFoundException) {
     if (error instanceof QueryFailedError) {
       const queryException = new QueryException(this.domainName);
       throw new BadRequestException(
