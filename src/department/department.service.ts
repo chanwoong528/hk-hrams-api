@@ -9,6 +9,8 @@ import {
   // UpdateManyDepartmentsPayload,
 } from './department.dto';
 import { CustomException } from 'src/common/exceptions/custom-exception';
+import { HramsUserService } from 'src/hrams-user/hrams-user.service';
+import { HramsUserDepartmentService } from 'src/hrams-user-department/hrams-user-department.service';
 
 @Injectable()
 export class DepartmentService {
@@ -17,18 +19,14 @@ export class DepartmentService {
   constructor(
     @InjectRepository(Department)
     private readonly departmentRepository: TreeRepository<Department>,
+    private readonly hrUserService: HramsUserService,
+    private readonly hramsUserDepartmentService: HramsUserDepartmentService,
   ) {}
 
   private recursiveDepartment(departments: Department[]): Department[] {
     return departments.map((department) => {
       const teamMembers = department.hramsUserDepartments.map((hud) => {
-        if (department.leaderId === hud.userId) {
-          return {
-            ...hud.user,
-            isLeader: true,
-          };
-        }
-        return hud.user;
+        return { ...hud.user, isLeader: hud.isLeader };
       });
       delete department.hramsUserDepartments;
 
@@ -43,13 +41,25 @@ export class DepartmentService {
     try {
       const departments = await this.departmentRepository.find({
         relations: [
-          'leader',
           'hramsUserDepartments',
           'hramsUserDepartments.user',
           'parent',
         ],
       });
-      return departments;
+
+      const departmentsWithLeader = departments.map((department) => {
+        return {
+          ...department,
+          leader:
+            department.hramsUserDepartments.find((hud) => hud.isLeader)?.user ||
+            null,
+          teamMembers: department.hramsUserDepartments.map((hud) => {
+            return { ...hud.user, isLeader: hud.isLeader };
+          }),
+        };
+      });
+
+      return departmentsWithLeader;
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);
     }
@@ -60,11 +70,7 @@ export class DepartmentService {
       const trees = await this.departmentRepository.manager
         .getTreeRepository(Department)
         .findTrees({
-          relations: [
-            'leader',
-            'hramsUserDepartments',
-            'hramsUserDepartments.user',
-          ],
+          relations: ['hramsUserDepartments', 'hramsUserDepartments.user'],
         });
 
       return this.recursiveDepartment(trees);
@@ -91,7 +97,6 @@ export class DepartmentService {
 
       const department = this.departmentRepository.create({
         departmentName: createDepartmentPayload.departmentName,
-        leaderId: createDepartmentPayload.leaderId,
       });
 
       // If parent is provided, set the parent relationship
@@ -102,7 +107,20 @@ export class DepartmentService {
         department.parent = parent;
       }
 
-      return await treeRepository.save(department);
+      const savedDepartment = await treeRepository.save(department);
+
+      if (createDepartmentPayload.leaderId) {
+        const leader = await this.hrUserService.getHramsUserById(
+          createDepartmentPayload.leaderId,
+        );
+        await this.hramsUserDepartmentService.upsertHramsUserDepartment({
+          userId: leader.userId,
+          departmentId: savedDepartment.departmentId,
+          isLeader: true,
+        });
+      }
+
+      return savedDepartment;
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);
     }
@@ -128,9 +146,6 @@ export class DepartmentService {
       if (updateDepartmentPayload.departmentName) {
         department.departmentName = updateDepartmentPayload.departmentName;
       }
-      if (updateDepartmentPayload.leaderId) {
-        department.leaderId = updateDepartmentPayload.leaderId;
-      }
 
       if (updateDepartmentPayload.parentId) {
         if (updateDepartmentPayload.parentId === 'NA') {
@@ -143,6 +158,28 @@ export class DepartmentService {
             throw new NotFoundException('Parent department does not exist');
           }
           department.parent = parent;
+        }
+      }
+      if (updateDepartmentPayload.leaderId) {
+        const leader = await this.hrUserService.getHramsUserById(
+          updateDepartmentPayload.leaderId,
+        );
+        const hramsUserDepartment =
+          await this.hramsUserDepartmentService.getHramsUserDepartmentByDepartmentId(
+            department.departmentId,
+          );
+        if (hramsUserDepartment) {
+          await this.hramsUserDepartmentService.updateHramsUserDepartmentById({
+            hramsUserDepartmentId: hramsUserDepartment.hramsUserDepartmentId,
+            userId: leader.userId,
+            isLeader: true,
+          });
+        } else {
+          await this.hramsUserDepartmentService.upsertHramsUserDepartment({
+            userId: leader.userId,
+            departmentId: department.departmentId,
+            isLeader: true,
+          });
         }
       }
 

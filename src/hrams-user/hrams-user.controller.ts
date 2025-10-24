@@ -1,10 +1,19 @@
-import { Controller, Post, Body, Get, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Query,
+  Param,
+  Patch,
+} from '@nestjs/common';
 import { HramsUserService } from './hrams-user.service';
 import { HramsUser } from './hrams-user.entity';
 import { Response } from 'src/common/api-reponse/response-type';
 import {
   CreateHramsUserPayload,
   HramsUserWithDepartments,
+  UpdateHramsUserPayload,
 } from './hrams-user.dto';
 
 import { CustomException } from 'src/common/exceptions/custom-exception';
@@ -52,6 +61,22 @@ export class HramsUserController {
     return {
       statusCode: 201,
       message: 'Hrams user created successfully',
+      data,
+    };
+  }
+
+  @Patch(':userId')
+  async updateHramsUserById(
+    @Param('userId') userId: string,
+    @Body() updateHramsUserPayload: UpdateHramsUserPayload,
+  ): Promise<Response<HramsUser>> {
+    const data = await this.hrUserService.updateHramsUserById(
+      userId,
+      updateHramsUserPayload,
+    );
+    return {
+      statusCode: 200,
+      message: `Hrams user updated successfully userId: ${userId}`,
       data,
     };
   }

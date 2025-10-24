@@ -6,8 +6,10 @@ import { HramsUser } from './hrams-user.entity';
 import {
   CreateHramsUserPayload,
   HramsUserWithDepartments,
+  UpdateHramsUserPayload,
 } from './hrams-user.dto';
 import { CustomException } from 'src/common/exceptions/custom-exception';
+import { HramsUserDepartmentService } from 'src/hrams-user-department/hrams-user-department.service';
 
 @Injectable()
 export class HramsUserService {
@@ -16,6 +18,7 @@ export class HramsUserService {
   constructor(
     @InjectRepository(HramsUser)
     private readonly hrUserRepository: Repository<HramsUser>,
+    private readonly hramsUserDepartmentService: HramsUserDepartmentService,
   ) {}
 
   async getAllHramsUsersByKeyword(keyword: string): Promise<HramsUser[]> {
@@ -51,6 +54,7 @@ export class HramsUserService {
         email: hrUser.email,
         created: hrUser.created,
         updated: hrUser.updated,
+        userStatus: hrUser.userStatus,
         departments: hrUser.hramsUserDepartments.map((hud) => hud.department),
       })) as HramsUserWithDepartments[];
 
@@ -68,7 +72,72 @@ export class HramsUserService {
   ): Promise<HramsUser> {
     try {
       const hrUser = this.hrUserRepository.create(createHramsUserPayload);
-      return await this.hrUserRepository.save(hrUser);
+      const savedHrUser = await this.hrUserRepository.save(hrUser);
+
+      if (createHramsUserPayload.departments) {
+        await Promise.all(
+          createHramsUserPayload.departments.map(
+            async (departmentId: string) => {
+              await this.hramsUserDepartmentService.upsertHramsUserDepartment({
+                userId: savedHrUser.userId,
+                departmentId: departmentId,
+              });
+            },
+          ),
+        );
+      }
+
+      return savedHrUser;
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
+
+  async getHramsUserById(userId: string): Promise<HramsUser> {
+    try {
+      const hrUser = await this.hrUserRepository.findOne({
+        where: { userId },
+        relations: ['hramsUserDepartments', 'hramsUserDepartments.department'],
+      });
+
+      return hrUser;
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
+
+  async updateHramsUserById(
+    userId: string,
+    updateHramsUserPayload: UpdateHramsUserPayload,
+  ): Promise<HramsUser> {
+    try {
+      const { tobeDeletedDepartments, tobeAddedDepartments, ...rest } =
+        updateHramsUserPayload;
+
+      if (tobeAddedDepartments) {
+        await Promise.all(
+          tobeAddedDepartments.map(async (departmentId: string) => {
+            await this.hramsUserDepartmentService.upsertHramsUserDepartment({
+              userId: userId,
+              departmentId: departmentId,
+            });
+          }),
+        );
+      }
+
+      if (tobeDeletedDepartments) {
+        await Promise.all(
+          tobeDeletedDepartments.map(async (departmentId: string) => {
+            await this.hramsUserDepartmentService.deleteHramsUserDepartment({
+              userId: userId,
+              departmentId: departmentId,
+            });
+          }),
+        );
+      }
+
+      const result = await this.hrUserRepository.update({ userId }, rest);
+      return result.generatedMaps[0] as HramsUser;
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);
     }

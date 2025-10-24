@@ -3,7 +3,6 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
-  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   Tree,
@@ -11,7 +10,7 @@ import {
   TreeParent,
   UpdateDateColumn,
 } from 'typeorm';
-import { HramsUser } from 'src/hrams-user/hrams-user.entity';
+
 import { HramsUserDepartment } from 'src/hrams-user-department/hrams-user-department.entity';
 
 @Tree('closure-table')
@@ -36,13 +35,13 @@ export class Department {
   @TreeChildren()
   children: Department[];
 
-  // Department must have one leader
-  @Column({ nullable: true })
-  leaderId: string;
+  // // Department must have one leader
+  // @Column({ nullable: true })
+  // leaderId: string;
 
-  @ManyToOne(() => HramsUser, { nullable: true })
-  @JoinColumn({ name: 'leaderId' })
-  leader: HramsUser;
+  // @ManyToOne(() => HramsUser, { nullable: true })
+  // @JoinColumn({ name: 'leaderId' })
+  // leader: HramsUser;
 
   @OneToMany(
     () => HramsUserDepartment,

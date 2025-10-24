@@ -29,6 +29,9 @@ export class HramsUserDepartment {
   @UpdateDateColumn()
   updated: Date;
 
+  @Column({ default: false })
+  isLeader: boolean;
+
   @ManyToOne(() => HramsUser)
   @JoinColumn({ name: 'userId' })
   user: HramsUser;

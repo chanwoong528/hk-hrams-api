@@ -20,6 +20,15 @@ export class HramsUser {
   @Column({ unique: true })
   email: string;
 
+  // @Column()
+  // pw: string;
+
+  @Column({ default: 'reviewee' })
+  lv: string; // reviewer | both | reviewee
+
+  @Column({ default: 'active' })
+  userStatus: string; // active | inactive | terminated
+
   @CreateDateColumn()
   created: Date;
 
