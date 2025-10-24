@@ -3,12 +3,29 @@ import { CreateGoalPayload } from './goal.dto';
 import { GoalService } from './goal.service';
 import { Goal } from './goal.entity';
 import { Response } from 'src/common/api-reponse/response-type';
-
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+@ApiTags('Goal')
 @Controller('goal')
 export class GoalController {
   constructor(private readonly goalService: GoalService) {}
 
-  @Post() async createGoal(
+  @ApiOperation({ summary: 'Create a new goal' })
+  @ApiResponse({ status: 400, description: 'Bad Request' })
+  @ApiResponse({ status: 201, description: 'Goal created successfully' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        appraisalId: {
+          type: 'string',
+          example: '123e4567-e89b-12d3-a456-426614174000',
+        },
+        description: { type: 'string' },
+      },
+    },
+  })
+  @Post()
+  async createGoal(
     @Body() createGoalPayload: CreateGoalPayload,
   ): Promise<Response<Goal>> {
     const data = await this.goalService.createGoal(createGoalPayload);
@@ -27,7 +44,9 @@ export class GoalController {
       data,
     };
   }
-  @Get(':id') async getGoal(@Param('id') id: string): Promise<Response<Goal>> {
+  @Get(':goalId') async getGoalById(
+    @Param('goalId') id: string,
+  ): Promise<Response<Goal>> {
     const data = await this.goalService.getGoal(id);
     return {
       statusCode: 200,

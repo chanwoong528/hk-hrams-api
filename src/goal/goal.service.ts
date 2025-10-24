@@ -23,7 +23,12 @@ export class GoalService {
 
   async createGoal(createGoalPayload: CreateGoalPayload): Promise<Goal> {
     try {
-      const goal = this.goalRepository.create(createGoalPayload);
+      console.log('createGoalPayload>> ', createGoalPayload);
+      const goal = this.goalRepository.create({
+        ...createGoalPayload,
+        performanceAppraisal: { appraisalId: createGoalPayload.appraisalId },
+      });
+
       return await this.goalRepository.save(goal);
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);

@@ -6,6 +6,7 @@ import { Department } from './department.entity';
 import {
   CreateDepartmentPayload,
   UpdateDepartmentPayload,
+  // UpdateManyDepartmentsPayload,
 } from './department.dto';
 import { CustomException } from 'src/common/exceptions/custom-exception';
 
@@ -18,13 +19,55 @@ export class DepartmentService {
     private readonly departmentRepository: TreeRepository<Department>,
   ) {}
 
+  private recursiveDepartment(departments: Department[]): Department[] {
+    return departments.map((department) => {
+      const teamMembers = department.hramsUserDepartments.map((hud) => {
+        if (department.leaderId === hud.userId) {
+          return {
+            ...hud.user,
+            isLeader: true,
+          };
+        }
+        return hud.user;
+      });
+      delete department.hramsUserDepartments;
+
+      return {
+        ...department,
+        teamMembers,
+        children: this.recursiveDepartment(department.children),
+      };
+    });
+  }
+  async getAllDepartmentsFlat(): Promise<Department[]> {
+    try {
+      const departments = await this.departmentRepository.find({
+        relations: [
+          'leader',
+          'hramsUserDepartments',
+          'hramsUserDepartments.user',
+          'parent',
+        ],
+      });
+      return departments;
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
+
   async getAllDepartments(): Promise<Department[]> {
     try {
       const trees = await this.departmentRepository.manager
         .getTreeRepository(Department)
-        .findTrees({ relations: ['leader'] });
+        .findTrees({
+          relations: [
+            'leader',
+            'hramsUserDepartments',
+            'hramsUserDepartments.user',
+          ],
+        });
 
-      return trees;
+      return this.recursiveDepartment(trees);
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);
     }
@@ -89,17 +132,18 @@ export class DepartmentService {
         department.leaderId = updateDepartmentPayload.leaderId;
       }
 
-      // Handle parent change if provided
       if (updateDepartmentPayload.parentId) {
-        const parent = await this.departmentRepository.findOne({
-          where: { departmentId: updateDepartmentPayload.parentId },
-        });
-        if (!parent) {
-          throw new NotFoundException('Parent department does not exist');
+        if (updateDepartmentPayload.parentId === 'NA') {
+          department.parent = null;
+        } else {
+          const parent = await this.departmentRepository.findOne({
+            where: { departmentId: updateDepartmentPayload.parentId },
+          });
+          if (!parent) {
+            throw new NotFoundException('Parent department does not exist');
+          }
+          department.parent = parent;
         }
-        department.parent = parent;
-      } else {
-        department.parent = null; // Make it a root department
       }
 
       return await treeRepository.save(department);
@@ -109,6 +153,16 @@ export class DepartmentService {
       );
     }
   }
+
+  //TODO: update many departments
+  // async updateDepartmentsMany(
+  //   updateManyDepartmentsPayload: UpdateManyDepartmentsPayload[],
+  // ): Promise<Department[]> {
+  //   try {
+  //   } catch (error: unknown) {
+  //     this.customException.handleException(error as QueryFailedError | Error);
+  //   }
+  // }
 
   async getDepartmentById(id: string): Promise<Department> {
     try {

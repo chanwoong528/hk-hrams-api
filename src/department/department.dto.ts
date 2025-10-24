@@ -9,6 +9,10 @@ export interface UpdateDepartmentPayload {
   parentId?: string; // Changed from parentDepartmentId
   leaderId?: string;
 }
+export interface UpdateManyDepartmentsPayload {
+  departmentId: string;
+  parentId: string;
+}
 
 // Response DTOs for nested structure
 export interface DepartmentTreeResponse {

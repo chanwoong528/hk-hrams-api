@@ -1,10 +1,19 @@
-import { Controller, Post, Body, Param, Patch, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Get,
+  Query,
+} from '@nestjs/common';
 import { DepartmentService } from './department.service';
 import { Department } from './department.entity';
 import { Response } from 'src/common/api-reponse/response-type';
 import {
   CreateDepartmentPayload,
   UpdateDepartmentPayload,
+  // UpdateManyDepartmentsPayload,
 } from './department.dto';
 
 @Controller('department')
@@ -12,8 +21,13 @@ export class DepartmentController {
   constructor(private readonly departmentService: DepartmentService) {}
 
   @Get()
-  async getAllDepartments(): Promise<Response<Department[]>> {
-    const data = await this.departmentService.getAllDepartments();
+  async getAllDepartments(
+    @Query('viewType') viewType: 'flat' | 'tree' = 'tree',
+  ): Promise<Response<Department[]>> {
+    const data =
+      viewType === 'flat'
+        ? await this.departmentService.getAllDepartmentsFlat()
+        : await this.departmentService.getAllDepartments();
     return {
       statusCode: 200,
       message: 'Root departments fetched successfully',
@@ -50,4 +64,10 @@ export class DepartmentController {
       data,
     };
   }
+
+  //TODO: update many departments
+  // @Patch()
+  // async updateManyDepartments(
+  //   @Body() updateManyDepartmentsPayload: UpdateManyDepartmentsPayload[],
+  // ): Promise<Response<Department[]>> {}
 }
