@@ -21,15 +21,32 @@ export class HramsUserService {
     private readonly hramsUserDepartmentService: HramsUserDepartmentService,
   ) {}
 
-  async getAllHramsUsersByKeyword(keyword: string): Promise<HramsUser[]> {
+  async getAllHramsUsersByKeyword(keyword: string): Promise<{
+    list: HramsUserWithDepartments[];
+    total: number;
+  }> {
     try {
-      const hrUsers = await this.hrUserRepository.find({
+      const [hrUsers, total] = await this.hrUserRepository.findAndCount({
         where: [
           { koreanName: Like(`%${keyword}%`) },
           { email: Like(`%${keyword}%`) },
         ],
+        relations: ['hramsUserDepartments', 'hramsUserDepartments.department'],
+        order: { created: 'DESC' },
       });
-      return hrUsers;
+      const list = hrUsers.map((hrUser) => ({
+        userId: hrUser.userId,
+        koreanName: hrUser.koreanName,
+        email: hrUser.email,
+        created: hrUser.created,
+        updated: hrUser.updated,
+        userStatus: hrUser.userStatus,
+        departments: hrUser.hramsUserDepartments.map((hud) => hud.department),
+      })) as HramsUserWithDepartments[];
+      return {
+        list,
+        total: total,
+      };
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);
     }

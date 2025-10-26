@@ -27,9 +27,7 @@ export class HramsUserController {
     @Query('keyword') keyword: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
-  ): Promise<
-    Response<{ list: HramsUserWithDepartments[]; total: number } | HramsUser[]>
-  > {
+  ): Promise<Response<{ list: HramsUserWithDepartments[]; total: number }>> {
     if (!keyword) {
       const data = await this.hrUserService.getAllHramsUsersByPagination(
         page,
