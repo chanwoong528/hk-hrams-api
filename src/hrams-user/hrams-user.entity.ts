@@ -38,6 +38,7 @@ export class HramsUser {
   @OneToMany(() => HramsUserDepartment, (hud) => hud.user, {
     cascade: false,
     eager: false,
+    nullable: true,
   })
   hramsUserDepartments: HramsUserDepartment[];
 }

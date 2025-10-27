@@ -3,9 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PerformanceAppraisal } from './performance-appraisal.entity';
 import { PerformanceAppraisalController } from './performance-appraisal.controller';
 import { PerformanceAppraisalService } from './performance-appraisal.service';
+import { HramsUserModule } from 'src/hrams-user/hrams-user.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PerformanceAppraisal])],
+  imports: [TypeOrmModule.forFeature([PerformanceAppraisal]), HramsUserModule],
   controllers: [PerformanceAppraisalController],
   providers: [PerformanceAppraisalService],
   exports: [PerformanceAppraisalService],

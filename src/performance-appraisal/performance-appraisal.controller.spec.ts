@@ -9,7 +9,9 @@ describe('PerformanceAppraisalController', () => {
       controllers: [PerformanceAppraisalController],
     }).compile();
 
-    controller = module.get<PerformanceAppraisalController>(PerformanceAppraisalController);
+    controller = module.get<PerformanceAppraisalController>(
+      PerformanceAppraisalController,
+    );
   });
 
   it('should be defined', () => {

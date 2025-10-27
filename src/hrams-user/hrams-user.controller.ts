@@ -78,4 +78,14 @@ export class HramsUserController {
       data,
     };
   }
+
+  @Post('demo-bulk')
+  async createDemoBulkHramsUsers(): Promise<Response<HramsUser[]>> {
+    const data = await this.hrUserService.createDemoBulkHramsUsers();
+    return {
+      statusCode: 201,
+      message: 'Demo bulk hrams users created successfully',
+      data,
+    };
+  }
 }

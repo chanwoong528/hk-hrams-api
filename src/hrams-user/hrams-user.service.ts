@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, QueryFailedError, Repository } from 'typeorm';
+import { In, Like, QueryFailedError, Repository } from 'typeorm';
 
 import { HramsUser } from './hrams-user.entity';
 import {
@@ -10,6 +10,8 @@ import {
 } from './hrams-user.dto';
 import { CustomException } from 'src/common/exceptions/custom-exception';
 import { HramsUserDepartmentService } from 'src/hrams-user-department/hrams-user-department.service';
+
+import userDemoData from '../../mock/hrams_users_300.json';
 
 @Injectable()
 export class HramsUserService {
@@ -26,6 +28,20 @@ export class HramsUserService {
     total: number;
   }> {
     try {
+      if (keyword === 'all') {
+        const [allHrUsers, total] = await this.hrUserRepository.findAndCount({
+          relations: [
+            'hramsUserDepartments',
+            'hramsUserDepartments.department',
+          ],
+          order: { created: 'DESC' },
+        });
+        return {
+          list: allHrUsers as HramsUserWithDepartments[],
+          total: total,
+        };
+      }
+
       const [hrUsers, total] = await this.hrUserRepository.findAndCount({
         where: [
           { koreanName: Like(`%${keyword}%`) },
@@ -157,6 +173,35 @@ export class HramsUserService {
       return result.generatedMaps[0] as HramsUser;
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
+
+  async getAllHramsUsersByLv(lv: string[]): Promise<HramsUser[]> {
+    try {
+      return await this.hrUserRepository.find({
+        where: { lv: In(lv) },
+      });
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+      return [];
+    }
+  }
+
+  //DEMO DATA Area
+
+  async createDemoBulkHramsUsers(): Promise<HramsUser[]> {
+    console.log(userDemoData);
+    try {
+      const hrUsers = userDemoData.map((user) => {
+        return this.hrUserRepository.create({
+          koreanName: user.koreanName.replace(/\s+/g, ''),
+          email: user.email,
+        });
+      });
+      return await this.hrUserRepository.save(hrUsers);
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+      return [];
     }
   }
 }
