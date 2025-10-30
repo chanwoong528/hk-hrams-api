@@ -1,5 +1,5 @@
 import { GoalAssessmentBy } from 'src/goal-assessment-by/goal-assessment-by.entity';
-import { PerformanceAppraisal } from 'src/performance-appraisal/performance-appraisal.entity';
+
 import {
   Column,
   CreateDateColumn,
@@ -10,6 +10,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { AppraisalUser } from 'src/appraisal-user/appraisal-user.entity';
 
 @Entity({ name: 'goals', schema: 'public', synchronize: true })
 export class Goal {
@@ -32,11 +33,15 @@ export class Goal {
   )
   goalAssessmentBy: GoalAssessmentBy[];
 
-  //PERFORMANCE APPRAISAL >> CASCADE DELETE
-  @ManyToOne(() => PerformanceAppraisal, (appraisal) => appraisal.goals, {
-    nullable: false,
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'appraisalId' })
-  performanceAppraisal: PerformanceAppraisal;
+  //APPRAISAL >> CASCADE DELETE
+  @ManyToOne(
+    () => AppraisalUser,
+    (appraisalUser) => appraisalUser.appraisalUserId,
+    {
+      nullable: false,
+      onDelete: 'CASCADE',
+    },
+  )
+  @JoinColumn({ name: 'appraisalUserId' })
+  appraisalUser: AppraisalUser;
 }

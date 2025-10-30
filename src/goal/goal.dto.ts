@@ -1,4 +1,4 @@
 export interface CreateGoalPayload {
-  appraisalId: string;
+  appraisalUserId: string;
   description: string;
 }

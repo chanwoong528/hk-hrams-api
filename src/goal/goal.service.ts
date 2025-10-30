@@ -26,7 +26,7 @@ export class GoalService {
       console.log('createGoalPayload>> ', createGoalPayload);
       const goal = this.goalRepository.create({
         ...createGoalPayload,
-        performanceAppraisal: { appraisalId: createGoalPayload.appraisalId },
+        appraisalUser: { appraisalUserId: createGoalPayload.appraisalUserId },
       });
 
       return await this.goalRepository.save(goal);

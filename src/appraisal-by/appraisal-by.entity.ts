@@ -1,5 +1,5 @@
 import { HramsUser } from 'src/hrams-user/hrams-user.entity';
-import { PerformanceAppraisal } from 'src/performance-appraisal/performance-appraisal.entity';
+
 import {
   Column,
   CreateDateColumn,
@@ -10,14 +10,15 @@ import {
   Unique,
   UpdateDateColumn,
 } from 'typeorm';
+import { AppraisalUser } from 'src/appraisal-user/appraisal-user.entity';
 
 @Entity({
-  name: 'performance_appraisal_by',
+  name: 'appraisal_by',
   schema: 'public',
   synchronize: true,
 })
 @Unique(['appraisalId', 'assessedById']) // ← 복합 유니크 (FK 컬럼명과 정확히 일치)
-export class PerformanceAppraisalBy {
+export class AppraisalBy {
   @PrimaryGeneratedColumn('uuid')
   appraisalById: string;
 
@@ -45,12 +46,16 @@ export class PerformanceAppraisalBy {
   @Column()
   assessedById: string;
 
-  //PERFORMANCE APPRAISAL >> CASCADE DELETE
-  @ManyToOne(() => PerformanceAppraisal, (appraisal) => appraisal.appraisalBy, {
-    onDelete: 'CASCADE',
-  })
+  //APPRAISAL >> CASCADE DELETE
+  @ManyToOne(
+    () => AppraisalUser,
+    (appraisalUser) => appraisalUser.appraisalUserId,
+    {
+      onDelete: 'CASCADE',
+    },
+  )
   @JoinColumn({ name: 'appraisalId' })
-  appraisal: PerformanceAppraisal;
+  appraisalUser: AppraisalUser;
 
   //ASSESSED BY
   @ManyToOne(() => HramsUser)

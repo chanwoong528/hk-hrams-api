@@ -6,8 +6,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { GoalModule } from './goal/goal.module';
 import { GoalAssessmentByModule } from './goal-assessment-by/goal-assessment-by.module';
-import { PerformanceAppraisalModule } from './performance-appraisal/performance-appraisal.module';
-import { PerformanceAppraisalByModule } from './performance-appraisal-by/performance-appraisal-by.module';
+import { AppraisalModule } from './appraisal/appraisal.module';
+import { AppraisalByModule } from './appraisal-by/appraisal-by.module';
 import { HramsUserModule } from './hrams-user/hrams-user.module';
 import { DepartmentModule } from './department/department.module';
 import { HramsUserDepartmentModule } from './hrams-user-department/hrams-user-department.module';
@@ -47,8 +47,8 @@ import { HramsUserDepartmentModule } from './hrams-user-department/hrams-user-de
     }),
     GoalModule,
     GoalAssessmentByModule,
-    PerformanceAppraisalModule,
-    PerformanceAppraisalByModule,
+    AppraisalModule,
+    AppraisalByModule,
     HramsUserModule,
     DepartmentModule,
     HramsUserDepartmentModule,

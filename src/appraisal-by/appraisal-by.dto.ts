@@ -1,4 +1,4 @@
-export interface CreatePerformanceAppraisalByPayload {
+export interface CreateAppraisalByPayload {
   appraisalId: string;
 
   assessType: string;
