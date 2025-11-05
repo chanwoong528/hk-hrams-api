@@ -1,9 +1,18 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { CreateGoalPayload } from './goal.dto';
 import { GoalService } from './goal.service';
 import { Goal } from './goal.entity';
 import { Response } from 'src/common/api-reponse/response-type';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { AuthGuard } from 'src/auth/auth.guard';
 @ApiTags('Goal')
 @Controller('goal')
 export class GoalController {
@@ -36,7 +45,11 @@ export class GoalController {
     };
   }
 
-  @Get() async getAllGoals(): Promise<Response<Goal[]>> {
+  @Get()
+  @UseGuards(AuthGuard)
+  async getAllGoals(@Request() request: Request): Promise<Response<Goal[]>> {
+    console.log('request>> ', request['user']);
+
     const data = await this.goalService.getAllGoals();
     return {
       statusCode: 200,

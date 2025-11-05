@@ -20,8 +20,8 @@ export class HramsUser {
   @Column({ unique: true })
   email: string;
 
-  // @Column()
-  // pw: string;
+  @Column({ nullable: true })
+  pw: string;
 
   @Column({ default: 'reviewee' })
   lv: string; // reviewer | both | reviewee

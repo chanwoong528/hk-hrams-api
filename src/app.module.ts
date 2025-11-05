@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+// import { JwtModule } from '@nestjs/jwt';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -11,6 +12,7 @@ import { AppraisalByModule } from './appraisal-by/appraisal-by.module';
 import { HramsUserModule } from './hrams-user/hrams-user.module';
 import { DepartmentModule } from './department/department.module';
 import { HramsUserDepartmentModule } from './hrams-user-department/hrams-user-department.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -18,6 +20,15 @@ import { HramsUserDepartmentModule } from './hrams-user-department/hrams-user-de
       isGlobal: true,
       envFilePath: 'env/dev.env',
     }),
+    // JwtModule.registerAsync({
+    //   imports: [ConfigModule],
+    //   inject: [ConfigService],
+    //   global: true,
+    //   useFactory: (configService: ConfigService) => ({
+    //     secret: configService.get<string>('JWT_SECRET'),
+    //     signOptions: { expiresIn: '60s' },
+    //   }),
+    // }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -52,6 +63,7 @@ import { HramsUserDepartmentModule } from './hrams-user-department/hrams-user-de
     HramsUserModule,
     DepartmentModule,
     HramsUserDepartmentModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -5,6 +5,7 @@ export interface CreateHramsUserPayload {
   koreanName: string;
   email: string;
   departments?: string[];
+  pw?: string;
 }
 
 export interface HramsUserWithDepartments extends HramsUser {

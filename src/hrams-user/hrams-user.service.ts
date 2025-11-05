@@ -12,6 +12,7 @@ import { CustomException } from 'src/common/exceptions/custom-exception';
 import { HramsUserDepartmentService } from 'src/hrams-user-department/hrams-user-department.service';
 
 import userDemoData from '../../mock/hrams_users_300.json';
+import { generateHashPassword } from 'src/common/utils/hash';
 
 @Injectable()
 export class HramsUserService {
@@ -100,37 +101,23 @@ export class HramsUserService {
     }
   }
 
-  async createHramsUser(
-    createHramsUserPayload: CreateHramsUserPayload,
-  ): Promise<HramsUser> {
-    try {
-      const hrUser = this.hrUserRepository.create(createHramsUserPayload);
-      const savedHrUser = await this.hrUserRepository.save(hrUser);
-
-      if (createHramsUserPayload.departments) {
-        await Promise.all(
-          createHramsUserPayload.departments.map(
-            async (departmentId: string) => {
-              await this.hramsUserDepartmentService.upsertHramsUserDepartment({
-                userId: savedHrUser.userId,
-                departmentId: departmentId,
-              });
-            },
-          ),
-        );
-      }
-
-      return savedHrUser;
-    } catch (error: unknown) {
-      this.customException.handleException(error as QueryFailedError | Error);
-    }
-  }
-
   async getHramsUserById(userId: string): Promise<HramsUser> {
     try {
       const hrUser = await this.hrUserRepository.findOne({
         where: { userId },
         relations: ['hramsUserDepartments', 'hramsUserDepartments.department'],
+      });
+
+      return hrUser;
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
+
+  async getHramsUserByEmail(email: string): Promise<HramsUser> {
+    try {
+      const hrUser = await this.hrUserRepository.findOne({
+        where: { email },
       });
 
       return hrUser;
@@ -187,15 +174,48 @@ export class HramsUserService {
     }
   }
 
+  async createHramsUser(
+    createHramsUserPayload: CreateHramsUserPayload,
+  ): Promise<HramsUser> {
+    try {
+      const hashedPassword = await generateHashPassword(
+        createHramsUserPayload.pw || '1234',
+      );
+      const hrUser = this.hrUserRepository.create({
+        ...createHramsUserPayload,
+        pw: hashedPassword,
+      });
+      const savedHrUser = await this.hrUserRepository.save(hrUser);
+
+      if (createHramsUserPayload.departments) {
+        await Promise.all(
+          createHramsUserPayload.departments.map(
+            async (departmentId: string) => {
+              await this.hramsUserDepartmentService.upsertHramsUserDepartment({
+                userId: savedHrUser.userId,
+                departmentId: departmentId,
+              });
+            },
+          ),
+        );
+      }
+
+      return savedHrUser;
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
   //DEMO DATA Area
 
   async createDemoBulkHramsUsers(): Promise<HramsUser[]> {
-    console.log(userDemoData);
+    const hashedPassword = await generateHashPassword('1234');
+
     try {
       const hrUsers = userDemoData.map((user) => {
         return this.hrUserRepository.create({
           koreanName: user.koreanName.replace(/\s+/g, ''),
           email: user.email,
+          pw: hashedPassword,
         });
       });
       return await this.hrUserRepository.save(hrUsers);
