@@ -208,7 +208,13 @@ export class DepartmentService {
 
       const department = await treeRepository.findOne({
         where: { departmentId: id },
-        relations: ['leader', 'children'],
+        // relations: ['leader', 'children'],
+        relations: [
+          'hramsUserDepartments',
+          'hramsUserDepartments.user',
+          // 'hramsUserDepartments.user.appraisalUsers',
+          // 'hramsUserDepartments.user.appraisalUsers.goals',
+        ],
       });
 
       if (!department) {

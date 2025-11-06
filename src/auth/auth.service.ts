@@ -2,7 +2,9 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { CustomException } from 'src/common/exceptions/custom-exception';
 import { HramsUserService } from 'src/hrams-user/hrams-user.service';
+import { HramsUserDepartmentService } from 'src/hrams-user-department/hrams-user-department.service';
 import { comparePassword } from 'src/common/utils/hash';
+// import { HramsUserDepartment } from 'src/hrams-user-department/hrams-user-department.entity';
 
 export interface SignInDto {
   email: string;
@@ -15,6 +17,7 @@ export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly hramsUserService: HramsUserService,
+    private readonly hramsUserDepartmentService: HramsUserDepartmentService,
   ) {}
 
   async signInReturnAccessToken(
@@ -28,13 +31,28 @@ export class AuthService {
       if (!user) {
         throw new UnauthorizedException('Invalid credentials');
       }
+      const userDepartments =
+        await this.hramsUserDepartmentService.getHramsUserDepartmentsByUserId(
+          user.userId,
+        );
+      console.log('userDepartments>> ', userDepartments);
       const isPasswordValid = await comparePassword(pw, user.pw);
 
       if (!isPasswordValid) {
         throw new UnauthorizedException('Invalid credentials');
       }
 
-      const payload = { sub: user.userId, email: user.email };
+      const payload = {
+        sub: user.userId,
+        email: user.email,
+        departments: userDepartments.map((department) => {
+          return {
+            departmentId: department.departmentId,
+            departmentName: department.department.departmentName,
+            isLeader: department.isLeader,
+          };
+        }),
+      };
 
       const accessToken = await this.generateAccessToken(payload);
       const refreshToken = await this.generateRefreshToken(payload);
@@ -45,7 +63,7 @@ export class AuthService {
     }
   }
 
-  async verifyToken(token: string): Promise<{ sub: string; email: string }> {
+  async verifyToken(token: string): Promise<Record<string, unknown>> {
     try {
       const decoded: string | null | Record<string, unknown> =
         this.jwtService.decode(token);
@@ -70,13 +88,13 @@ export class AuthService {
   }
 
   private async generateAccessToken(
-    payload: Record<string, string>,
+    payload: Record<string, unknown>,
   ): Promise<string> {
     return await this.jwtService.signAsync(payload);
   }
 
   private async generateRefreshToken(
-    payload: Record<string, string>,
+    payload: Record<string, unknown>,
   ): Promise<string> {
     return await this.jwtService.signAsync(payload, {
       expiresIn: '7d',
@@ -97,6 +115,11 @@ export class AuthService {
       const payload = {
         sub: decoded['sub'] as string,
         email: decoded['email'] as string,
+        departments: decoded['departments'] as {
+          departmentId: string;
+          departmentName: string;
+          isLeader: boolean;
+        }[],
       };
 
       const accessToken = await this.generateAccessToken(payload);
@@ -108,12 +131,27 @@ export class AuthService {
     }
   }
 
-  async getUserInfo(
-    accessToken: string,
-  ): Promise<{ userId: string; email: string }> {
+  async getUserInfo(accessToken: string): Promise<{
+    userId: string;
+    email: string;
+    departments: {
+      departmentId: string;
+      departmentName: string;
+      isLeader: boolean;
+    }[];
+  }> {
     try {
       const payload = await this.verifyToken(accessToken);
-      return { userId: payload.sub, email: payload.email };
+      return {
+        userId: payload['sub'] as string,
+        email: payload['email'] as string,
+        departments:
+          (payload['departments'] as {
+            departmentId: string;
+            departmentName: string;
+            isLeader: boolean;
+          }[]) || [],
+      };
     } catch (error) {
       this.customException.handleException(error as Error);
     }

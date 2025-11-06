@@ -14,5 +14,6 @@ import { AppraisalModule } from 'src/appraisal/appraisal.module';
   ],
   controllers: [AppraisalUserController],
   providers: [AppraisalUserService],
+  exports: [AppraisalUserService],
 })
 export class AppraisalUserModule {}

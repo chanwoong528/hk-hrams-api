@@ -6,9 +6,11 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Goal } from 'src/goal/goal.entity';
 
 @Entity({
   name: 'appraisal_user',
@@ -44,4 +46,11 @@ export class AppraisalUser {
   @ManyToOne(() => HramsUser)
   @JoinColumn({ name: 'assessedById' })
   assessedBy: HramsUser;
+
+  //GOALS >> CASCADE DELETE
+  @OneToMany(() => Goal, (goal) => goal.appraisalUser, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  goals: Goal[];
 }

@@ -68,6 +68,19 @@ export class AppraisalUserService {
     return null;
   }
 
+  async getAppraisalUserByUserIdAndAppraisalId(
+    userId: string,
+    appraisalId: string,
+  ): Promise<AppraisalUser> {
+    try {
+      return await this.appraisalUserRepository.findOne({
+        where: { owner: { userId }, appraisal: { appraisalId } },
+      });
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
+
   async getAppraisalUsersByAppraisalId(
     appraisalId: string,
     page: number = 1,
@@ -77,10 +90,6 @@ export class AppraisalUserService {
     sortOrder?: 'asc' | 'desc',
   ): Promise<{ list: AppraisalUser[]; total: number }> {
     try {
-      // console.log('sortBy', sortBy);
-      // console.log('sortOrder', sortOrder);
-      console.log('keyword', keyword);
-
       const orderObject = this.setOrderObject(sortBy, sortOrder);
 
       const queryBuilder = this.appraisalUserRepository

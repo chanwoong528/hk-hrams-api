@@ -22,8 +22,6 @@ export class AuthController {
   async signIn(
     @Body() signInDto: SignInDto,
   ): Promise<Response<{ accessToken: string; refreshToken: string }>> {
-    console.log(signInDto);
-
     const authTokens =
       await this.authService.signInReturnAccessToken(signInDto);
     return {
@@ -50,16 +48,35 @@ export class AuthController {
 
   @Get('user-info')
   @UseGuards(AuthGuard)
-  async getUserInfo(
-    @Request() request: Request,
-  ): Promise<Response<{ userId: string; email: string }>> {
-    console.log('request>> ', request['user']);
-
-    const userInfo = (await request['user']) as { sub: string; email: string };
+  async getUserInfo(@Request() request: Request): Promise<
+    Response<{
+      userId: string;
+      email: string;
+      departments: {
+        departmentId: string;
+        departmentName: string;
+        isLeader: boolean;
+      }[];
+    }>
+  > {
+    console.log('request>>> ', request['user']);
+    const userInfo = (await request['user']) as {
+      sub: string;
+      email: string;
+      departments: {
+        departmentId: string;
+        departmentName: string;
+        isLeader: boolean;
+      }[];
+    };
     return {
       statusCode: 200,
       message: 'User info fetched successfully',
-      data: { userId: userInfo.sub, email: userInfo.email },
+      data: {
+        userId: userInfo.sub,
+        email: userInfo.email,
+        departments: userInfo.departments,
+      },
     };
   }
 }

@@ -18,11 +18,11 @@ import { Response } from 'src/common/api-reponse/response-type';
 import { AppraisalService } from './appraisal.service';
 import { AuthGuard } from 'src/auth/auth.guard';
 
-@Controller('appraisal')
+@Controller()
 export class AppraisalController {
   constructor(private readonly appraisalService: AppraisalService) {}
 
-  @Get()
+  @Get('appraisal')
   @UseGuards(AuthGuard)
   async getAllAppraisals(
     @Query('type') type: string = '',
@@ -60,7 +60,7 @@ export class AppraisalController {
     };
   }
 
-  @Get(':appraisalId')
+  @Get('appraisal/:appraisalId')
   async getAllAppraisalsByType(
     @Param('appraisalId') appraisalId: string,
     @Query('page') page?: number,
@@ -79,25 +79,21 @@ export class AppraisalController {
       data,
     };
   }
+  @Get('appraisal-team-members')
+  async getAppraisalTeamMembers(
+    @Query('departments') departments: string,
+  ): Promise<Response<FormattedAppraisal[][]>> {
+    const ids = departments.split(',');
+    const data = await this.appraisalService.getAppraisalTeamMembers(ids);
 
-  // @Get('/distinct-appraisal-types')
-  // async getAallCountByDistinctAppraisalType(
-  //   @Query('keyword') keyword?: string, // @Query('keyword') keyword?: string,
-  // ): Promise<Response<{ appraisalType: string; count: number }[]>> {
-  //   // console.log('keyword', keyword);
-  //   const data = await this.appraisalService
-  //     .getAallCountByDistinctAppraisalType
-  //     // keyword,
-  //     ();
-  //   return {
-  //     statusCode: 200,
-  //     message:
-  //       'Appraisals count by appraisal type fetched successfully11111',
-  //     data,
-  //   };
-  // }
-
-  @Post()
+    console.log('data>>> ', data);
+    return {
+      statusCode: 200,
+      message: 'Appraisal team members fetched successfully',
+      data: data,
+    };
+  }
+  @Post('appraisal')
   async createAppraisal(
     @Body()
     createAppraisalPayload: CreateAppraisalPayload,
@@ -113,11 +109,13 @@ export class AppraisalController {
     };
   }
 
-  @Patch(':appraisalId')
+  @Patch('appraisal/:appraisalId')
   async updateAppraisal(
     @Param('appraisalId') appraisalId: string,
     @Body() updateAppraisalPayload: UpdateAppraisalPayload,
   ): Promise<Response<Appraisal>> {
+    console.log('updateAppraisalPayload>>> ', updateAppraisalPayload);
+
     const data = await this.appraisalService.updateAppraisal(
       appraisalId,
       updateAppraisalPayload,

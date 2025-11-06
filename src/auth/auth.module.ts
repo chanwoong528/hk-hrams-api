@@ -1,14 +1,17 @@
 import { Module } from '@nestjs/common';
-
-import { HramsUserModule } from 'src/hrams-user/hrams-user.module';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+
+import { HramsUserModule } from 'src/hrams-user/hrams-user.module';
+import { HramsUserDepartmentModule } from 'src/hrams-user-department/hrams-user-department.module';
+
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
 
 @Module({
   imports: [
     HramsUserModule,
+    HramsUserDepartmentModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

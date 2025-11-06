@@ -16,8 +16,12 @@ import { AppraisalUser } from 'src/appraisal-user/appraisal-user.entity';
 export class Goal {
   @PrimaryGeneratedColumn('uuid')
   goalId: string;
+
+  @Column()
+  title: string;
   @Column()
   description: string;
+
   @CreateDateColumn()
   created: Date;
   @UpdateDateColumn()
@@ -34,14 +38,10 @@ export class Goal {
   goalAssessmentBy: GoalAssessmentBy[];
 
   //APPRAISAL >> CASCADE DELETE
-  @ManyToOne(
-    () => AppraisalUser,
-    (appraisalUser) => appraisalUser.appraisalUserId,
-    {
-      nullable: false,
-      onDelete: 'CASCADE',
-    },
-  )
+  @ManyToOne(() => AppraisalUser, (appraisalUser) => appraisalUser.goals, {
+    nullable: false,
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'appraisalUserId' })
   appraisalUser: AppraisalUser;
 }

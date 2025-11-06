@@ -10,6 +10,7 @@ import { Goal } from './goal.entity';
 import { CreateGoalPayload } from './goal.dto';
 import { CustomException } from 'src/common/exceptions/custom-exception';
 import { GoalAssessmentBy } from 'src/goal-assessment-by/goal-assessment-by.entity';
+import { AppraisalUserService } from 'src/appraisal-user/appraisal-user.service';
 
 @Injectable()
 export class GoalService {
@@ -19,17 +20,33 @@ export class GoalService {
   constructor(
     @InjectRepository(Goal)
     private readonly goalRepository: Repository<Goal>,
+    private readonly appraisalUserService: AppraisalUserService,
   ) {}
 
-  async createGoal(createGoalPayload: CreateGoalPayload): Promise<Goal> {
+  async createGoal(
+    createGoalPayload: CreateGoalPayload,
+    userId: string,
+  ): Promise<Goal[]> {
     try {
-      console.log('createGoalPayload>> ', createGoalPayload);
-      const goal = this.goalRepository.create({
-        ...createGoalPayload,
-        appraisalUser: { appraisalUserId: createGoalPayload.appraisalUserId },
-      });
+      const appraisalUser =
+        await this.appraisalUserService.getAppraisalUserByUserIdAndAppraisalId(
+          userId,
+          createGoalPayload.appraisalId,
+        );
 
-      return await this.goalRepository.save(goal);
+      if (!appraisalUser) {
+        throw new NotFoundException('Appraisal user not found');
+      }
+
+      const goals = createGoalPayload.goals.map((goal) => {
+        return this.goalRepository.create({
+          ...goal,
+          appraisalUser,
+        });
+      });
+      const savedGoals = await this.goalRepository.save(goals);
+
+      return savedGoals;
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);
     }

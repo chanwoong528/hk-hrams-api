@@ -34,6 +34,7 @@ import { AuthModule } from './auth/auth.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
+
         host: configService.get<string>('POSTGRES_HOST', 'localhost'),
         port: configService.get<number>('POSTGRES_PORT_POOL', 5432),
         username: configService.get<string>('POSTGRES_USER', 'postgres'),
@@ -42,7 +43,10 @@ import { AuthModule } from './auth/auth.module';
         entities: [],
         autoLoadEntities: true,
         synchronize: configService.get<string>('NODE_ENV') !== 'production',
-        logging: configService.get<string>('NODE_ENV') === 'development',
+        logging:
+          configService.get<string>('NODE_ENV') === 'development'
+            ? ['query', 'error', 'schema']
+            : false,
         retryAttempts:
           configService.get<string>('NODE_ENV') === 'production' ? 10 : 1,
         extra: {

@@ -22,6 +22,95 @@ export class AppraisalService {
     private readonly appraisalRepository: Repository<Appraisal>,
   ) {}
 
+  async getAppraisalTeamMembers(
+    departments: string[],
+  ): Promise<FormattedAppraisal[][]> {
+    const teamMembers = await Promise.all(
+      departments.map((departmentId) => {
+        return this.getAppraisalTeamMembersByAppraisalId(departmentId);
+      }),
+    );
+
+    return teamMembers;
+  }
+  async getAppraisalTeamMembersByAppraisalId(
+    departmentId: string,
+  ): Promise<FormattedAppraisal[]> {
+    const appraisal = await this.appraisalRepository
+      .createQueryBuilder('appraisal')
+      .leftJoin('appraisal.appraisalUsers', 'appraisalUser')
+      .leftJoin('appraisalUser.owner', 'owner')
+      .leftJoin('owner.hramsUserDepartments', 'hud')
+      .leftJoin('hud.department', 'department')
+      .leftJoin('appraisalUser.goals', 'goals')
+      .where('appraisal.status = :status', { status: 'ongoing' })
+      .andWhere('department.departmentId = :departmentId', { departmentId })
+      .select([
+        'appraisal',
+        'goals',
+        'owner.userId',
+        'owner.koreanName',
+        'department.departmentName',
+      ])
+      .getRawMany();
+    if (!appraisal || appraisal.length === 0) {
+      throw new NotFoundException('Appraisal not found');
+    }
+
+    return this.formatAppraisal(appraisal);
+  }
+
+  private formatAppraisal(appraisal: RawAppraisalRow[]): FormattedAppraisal[] {
+    return Object.values(
+      appraisal.reduce(
+        (acc: Record<string, FormattedAppraisal>, row: RawAppraisalRow) => {
+          const id = row.appraisal_appraisalId;
+
+          if (!acc[id]) {
+            acc[id] = {
+              appraisalId: id,
+              appraisalType: row.appraisal_appraisalType,
+              title: row.appraisal_title,
+              description: row.appraisal_description,
+              endDate: row.appraisal_endDate,
+              status: row.appraisal_status,
+              // created: row.appraisal_created,
+              // updated: row.appraisal_updated,
+              departmentName: row.department_departmentName,
+              users: [],
+            };
+          }
+
+          acc[id].users.push({
+            appraisalUserId: row.appraisalUser_appraisalUserId,
+            status: row.appraisalUser_status,
+            userId: row.owner_userId,
+            koreanName: row.owner_koreanName,
+            goals:
+              row.goals_goalId &&
+              row.goals_title &&
+              row.goals_description &&
+              row.goals_created &&
+              row.goals_updated
+                ? [
+                    {
+                      goalId: row.goals_goalId,
+                      title: row.goals_title,
+                      description: row.goals_description,
+                      created: row.goals_created,
+                      updated: row.goals_updated,
+                    },
+                  ]
+                : [],
+          });
+
+          return acc;
+        },
+        {},
+      ),
+    );
+  }
+
   async getAllAppraisals(): Promise<Appraisal[]> {
     try {
       const qb = this.appraisalRepository
@@ -104,12 +193,19 @@ export class AppraisalService {
       }
       const appraisals = await this.appraisalRepository.find({
         where: { appraisalUsers: { owner: { userId } } },
-        relations: ['appraisalUsers', 'appraisalUsers.appraisal'],
+        relations: [
+          'appraisalUsers',
+          'appraisalUsers.owner',
+          'appraisalUsers.goals',
+        ],
       });
 
-      console.log('appraisals>> ', appraisals);
-
-      return appraisals;
+      return appraisals.map((appraisal) => ({
+        ...appraisal,
+        goals: appraisal.appraisalUsers.flatMap(
+          (appraisalUser) => appraisalUser.goals,
+        ),
+      }));
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);
     }

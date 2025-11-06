@@ -17,5 +17,6 @@ import { AuthModule } from 'src/auth/auth.module';
   ],
   controllers: [DepartmentController],
   providers: [DepartmentService],
+  exports: [DepartmentService],
 })
 export class DepartmentModule {}

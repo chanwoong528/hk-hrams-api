@@ -34,13 +34,17 @@ export class GoalController {
     },
   })
   @Post()
+  @UseGuards(AuthGuard)
   async createGoal(
     @Body() createGoalPayload: CreateGoalPayload,
-  ): Promise<Response<Goal>> {
-    const data = await this.goalService.createGoal(createGoalPayload);
+    @Request() request: Request,
+  ): Promise<Response<Goal[]>> {
+    const { sub } = (await request['user']) as { sub: string };
+
+    const data = await this.goalService.createGoal(createGoalPayload, sub);
     return {
       statusCode: 201,
-      message: 'Goal created successfully',
+      message: 'Goals created successfully',
       data,
     };
   }

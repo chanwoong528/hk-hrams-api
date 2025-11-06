@@ -53,7 +53,7 @@ export class HramsUserController {
   }
 
   @Post()
-  @UseGuards(AuthGuard)
+  // @UseGuards(AuthGuard)
   async createHramsUser(
     @Body() createHramsUserPayload: CreateHramsUserPayload,
   ): Promise<Response<HramsUser>> {
