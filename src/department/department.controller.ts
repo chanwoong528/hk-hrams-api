@@ -6,6 +6,7 @@ import {
   Patch,
   Get,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { DepartmentService } from './department.service';
 import { Department } from './department.entity';
@@ -13,14 +14,15 @@ import { Response } from 'src/common/api-reponse/response-type';
 import {
   CreateDepartmentPayload,
   UpdateDepartmentPayload,
-  // UpdateManyDepartmentsPayload,
 } from './department.dto';
+import { AuthGuard } from 'src/auth/auth.guard';
 
 @Controller('department')
 export class DepartmentController {
   constructor(private readonly departmentService: DepartmentService) {}
 
   @Get()
+  @UseGuards(AuthGuard)
   async getAllDepartments(
     @Query('viewType') viewType: 'flat' | 'tree' = 'tree',
   ): Promise<Response<Department[]>> {

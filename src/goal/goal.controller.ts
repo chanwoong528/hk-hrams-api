@@ -67,4 +67,21 @@ export class GoalController {
       data,
     };
   }
+
+  @Get(':appraisalId')
+  async getGoalByUserIdAndAppraisalId(
+    @Param('appraisalId') appraisalId: string,
+    @Request() request: Request,
+  ): Promise<Response<Goal[]>> {
+    const { userId } = (await request['user']) as { userId: string };
+    const data = await this.goalService.getGoalByUserIdAndAppraisalId(
+      userId,
+      appraisalId,
+    );
+    return {
+      statusCode: 200,
+      message: 'Goals fetched successfully',
+      data,
+    };
+  }
 }

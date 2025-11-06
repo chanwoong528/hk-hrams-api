@@ -6,6 +6,7 @@ import {
   Query,
   Param,
   Patch,
+  UseGuards,
 } from '@nestjs/common';
 import { HramsUserService } from './hrams-user.service';
 import { HramsUser } from './hrams-user.entity';
@@ -17,13 +18,15 @@ import {
 } from './hrams-user.dto';
 
 import { CustomException } from 'src/common/exceptions/custom-exception';
-
+import { AuthGuard } from 'src/auth/auth.guard';
 @Controller('user')
 export class HramsUserController {
   private readonly customException = new CustomException('HramsUser');
   constructor(private readonly hrUserService: HramsUserService) {}
 
-  @Get() async getAllHramsUsers(
+  @Get()
+  @UseGuards(AuthGuard)
+  async getAllHramsUsers(
     @Query('keyword') keyword: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
@@ -50,6 +53,7 @@ export class HramsUserController {
   }
 
   @Post()
+  @UseGuards(AuthGuard)
   async createHramsUser(
     @Body() createHramsUserPayload: CreateHramsUserPayload,
   ): Promise<Response<HramsUser>> {

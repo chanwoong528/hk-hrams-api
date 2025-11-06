@@ -35,6 +35,28 @@ export class GoalService {
     }
   }
 
+  async getGoalByUserIdAndAppraisalId(
+    userId: string,
+    appraisalId: string,
+  ): Promise<Goal[]> {
+    try {
+      console.log('userId>> ', userId);
+      console.log('appraisalId>> ', appraisalId);
+
+      const goals = await this.goalRepository.find({
+        where: {
+          appraisalUser: { owner: { userId } },
+          // appraisal: { appraisalId },
+        },
+        relations: ['appraisalUser'],
+      });
+
+      return goals;
+    } catch (error) {
+      this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
+
   async getGoal(
     goalId: string,
   ): Promise<Goal & { goalAssessmentBy: GoalAssessmentBy[] }> {

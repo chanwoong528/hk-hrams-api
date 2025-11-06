@@ -28,12 +28,16 @@ export class AppraisalUserController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('keyword') keyword?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
   ): Promise<Response<{ list: AppraisalUser[]; total: number }>> {
     const data = await this.appraisalUserService.getAppraisalUsersByAppraisalId(
       appraisalId,
       page,
       limit,
       keyword,
+      sortBy,
+      sortOrder,
     );
     return {
       statusCode: 200,

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AppraisalUser } from './appraisal-user.entity';
 
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, QueryFailedError, Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { CreateAppraisalUserPayload } from './appraisal-user.dto';
 import { HramsUserService } from 'src/hrams-user/hrams-user.service';
 import { CustomException } from 'src/common/exceptions/custom-exception';
@@ -54,30 +54,58 @@ export class AppraisalUserService {
     }
   }
 
+  private setOrderObject(
+    sortBy: string,
+    sortOrder: 'asc' | 'desc',
+  ): { owner?: { koreanName: 'ASC' | 'DESC' } } | null {
+    if (sortBy === 'owner') {
+      return {
+        owner: {
+          koreanName: sortOrder === 'asc' ? 'ASC' : 'DESC',
+        },
+      };
+    }
+    return null;
+  }
+
   async getAppraisalUsersByAppraisalId(
     appraisalId: string,
     page: number = 1,
     limit: number = 10,
     keyword?: string,
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc',
   ): Promise<{ list: AppraisalUser[]; total: number }> {
     try {
-      const [appraisalUsers, total] =
-        await this.appraisalUserRepository.findAndCount({
-          where: {
-            appraisal: { appraisalId },
-            ...(keyword?.trim() && {
-              owner: { koreanName: Like(`%${keyword}%`) },
-            }),
-          },
-          relations: [
-            'owner',
-            'appraisal',
-            'owner.hramsUserDepartments',
-            'owner.hramsUserDepartments.department',
-          ],
-          skip: (page - 1) * limit,
-          take: limit,
+      // console.log('sortBy', sortBy);
+      // console.log('sortOrder', sortOrder);
+      console.log('keyword', keyword);
+
+      const orderObject = this.setOrderObject(sortBy, sortOrder);
+
+      const queryBuilder = this.appraisalUserRepository
+        .createQueryBuilder('appraisalUser')
+        .leftJoinAndSelect('appraisalUser.owner', 'owner')
+        .leftJoinAndSelect('appraisalUser.appraisal', 'appraisal')
+        .leftJoinAndSelect('owner.hramsUserDepartments', 'hramsUserDepartments')
+        .leftJoinAndSelect('hramsUserDepartments.department', 'department')
+        .where('appraisal.appraisalId = :appraisalId', { appraisalId });
+
+      if (keyword?.trim()) {
+        // console.log('keyword', keyword);
+        queryBuilder.andWhere('owner.koreanName LIKE :keyword', {
+          keyword: `%${keyword}%`,
         });
+      }
+
+      if (orderObject?.owner?.koreanName) {
+        queryBuilder.orderBy('owner.koreanName', orderObject.owner.koreanName);
+      }
+
+      queryBuilder.skip((page - 1) * limit).take(limit);
+
+      const [appraisalUsers, total] = await queryBuilder.getManyAndCount();
+
       return {
         list: appraisalUsers.map((appraisalUser) => ({
           ...appraisalUser,

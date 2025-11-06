@@ -6,6 +6,8 @@ import {
   Query,
   Param,
   Patch,
+  Request,
+  UseGuards,
 } from '@nestjs/common';
 import { Appraisal } from './appraisal.entity';
 import {
@@ -14,15 +16,18 @@ import {
 } from './appraisal.dto';
 import { Response } from 'src/common/api-reponse/response-type';
 import { AppraisalService } from './appraisal.service';
+import { AuthGuard } from 'src/auth/auth.guard';
 
 @Controller('appraisal')
 export class AppraisalController {
   constructor(private readonly appraisalService: AppraisalService) {}
 
   @Get()
+  @UseGuards(AuthGuard)
   async getAllAppraisals(
     @Query('type') type: string = '',
     // @Query('keyword') keyword?: string,
+    @Request() request: Request,
   ): Promise<
     Response<Appraisal[] | { appraisalType: string; count: number }[]>
   > {
@@ -34,6 +39,19 @@ export class AppraisalController {
         data,
       };
     }
+
+    if (type === 'my-appraisal') {
+      const { sub } = (await request['user']) as { sub: string };
+      console.log('sub>> ', sub);
+
+      const data = await this.appraisalService.getMyAppraisal(sub);
+      return {
+        statusCode: 200,
+        message: 'My appraisal fetched successfully',
+        data,
+      };
+    }
+
     const data = await this.appraisalService.getAllAppraisals();
     return {
       statusCode: 200,

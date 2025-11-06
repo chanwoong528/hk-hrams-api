@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import {
   CreateAppraisalPayload,
   UpdateAppraisalPayload,
@@ -91,6 +95,24 @@ export class AppraisalService {
     return await this.appraisalRepository.find({
       where: { title: Like(`%${title}%`) },
     });
+  }
+
+  async getMyAppraisal(userId: string): Promise<Appraisal[]> {
+    try {
+      if (!userId) {
+        throw new UnauthorizedException('User not found');
+      }
+      const appraisals = await this.appraisalRepository.find({
+        where: { appraisalUsers: { owner: { userId } } },
+        relations: ['appraisalUsers', 'appraisalUsers.appraisal'],
+      });
+
+      console.log('appraisals>> ', appraisals);
+
+      return appraisals;
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+    }
   }
 
   async getAallCountByDistinctAppraisalType(keyword?: string): Promise<
