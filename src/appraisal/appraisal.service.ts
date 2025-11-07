@@ -62,57 +62,6 @@ export class AppraisalService {
     return formatAppraisalNested(appraisal);
   }
 
-  private formatAppraisal(appraisal: RawAppraisalRow[]): FormattedAppraisal[] {
-    return Object.values(
-      appraisal.reduce(
-        (acc: Record<string, FormattedAppraisal>, row: RawAppraisalRow) => {
-          const id = row.appraisal_appraisalId;
-
-          if (!acc[id]) {
-            acc[id] = {
-              appraisalId: id,
-              appraisalType: row.appraisal_appraisalType,
-              title: row.appraisal_title,
-              description: row.appraisal_description,
-              endDate: row.appraisal_endDate,
-              status: row.appraisal_status,
-              // created: row.appraisal_created,
-              // updated: row.appraisal_updated,
-              departmentName: row.department_departmentName,
-              users: [],
-            };
-          }
-
-          acc[id].users.push({
-            appraisalUserId: row.appraisalUser_appraisalUserId,
-            status: row.appraisalUser_status,
-            userId: row.owner_userId,
-            koreanName: row.owner_koreanName,
-            goals:
-              row.goals_goalId &&
-              row.goals_title &&
-              row.goals_description &&
-              row.goals_created &&
-              row.goals_updated
-                ? [
-                    {
-                      goalId: row.goals_goalId,
-                      title: row.goals_title,
-                      description: row.goals_description,
-                      created: row.goals_created,
-                      updated: row.goals_updated,
-                    },
-                  ]
-                : [],
-          });
-
-          return acc;
-        },
-        {},
-      ),
-    );
-  }
-
   async getAllAppraisals(): Promise<Appraisal[]> {
     try {
       const qb = this.appraisalRepository
