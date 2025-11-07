@@ -7,14 +7,14 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import { CreateGoalPayload } from './goal.dto';
+import { CreateCommonGoalPayload, CreateGoalPayload } from './goal.dto';
 import { GoalService } from './goal.service';
 import { Goal } from './goal.entity';
 import { Response } from 'src/common/api-reponse/response-type';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 @ApiTags('Goal')
-@Controller('goal')
+@Controller()
 export class GoalController {
   constructor(private readonly goalService: GoalService) {}
 
@@ -33,7 +33,7 @@ export class GoalController {
       },
     },
   })
-  @Post()
+  @Post('goal')
   @UseGuards(AuthGuard)
   async createGoal(
     @Body() createGoalPayload: CreateGoalPayload,
@@ -48,8 +48,35 @@ export class GoalController {
       data,
     };
   }
+  @Post('common-goal')
+  @UseGuards(AuthGuard)
+  async createCommonGoal(
+    @Body() createCommonGoalPayload: CreateCommonGoalPayload,
+    @Request() request: Request,
+  ): Promise<Response<Goal[]>> {
+    const { sub } = (await request['user']) as { sub: string };
 
-  @Get()
+    console.log('sub>> ', sub);
+
+    const data = await this.goalService.createCommonGoalByLeader(
+      createCommonGoalPayload,
+      sub,
+    );
+
+    return {
+      statusCode: 201,
+      message: 'Common goal created successfully',
+      data: data,
+    };
+
+    // return {
+    //   statusCode: 201,
+    //   message: 'Common goal created successfully',
+    //   data,
+    // };
+  }
+
+  @Get('goal')
   @UseGuards(AuthGuard)
   async getAllGoals(@Request() request: Request): Promise<Response<Goal[]>> {
     console.log('request>> ', request['user']);
@@ -61,7 +88,7 @@ export class GoalController {
       data,
     };
   }
-  @Get(':goalId') async getGoalById(
+  @Get('goal/:goalId') async getGoalById(
     @Param('goalId') id: string,
   ): Promise<Response<Goal>> {
     const data = await this.goalService.getGoal(id);
@@ -72,7 +99,7 @@ export class GoalController {
     };
   }
 
-  @Get(':appraisalId')
+  @Get('goal/:appraisalId')
   async getGoalByUserIdAndAppraisalId(
     @Param('appraisalId') appraisalId: string,
     @Request() request: Request,

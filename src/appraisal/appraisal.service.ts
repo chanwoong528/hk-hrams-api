@@ -12,6 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Like, QueryFailedError, Repository } from 'typeorm';
 
 import { CustomException } from 'src/common/exceptions/custom-exception';
+import { formatAppraisalNested } from './appraisal.adaptor';
 
 @Injectable()
 export class AppraisalService {
@@ -24,18 +25,20 @@ export class AppraisalService {
 
   async getAppraisalTeamMembers(
     departments: string[],
-  ): Promise<FormattedAppraisal[][]> {
+    userId: string,
+  ): Promise<FormattedAppraisalResponse> {
     const teamMembers = await Promise.all(
       departments.map((departmentId) => {
-        return this.getAppraisalTeamMembersByAppraisalId(departmentId);
+        return this.getAppraisalTeamMembersByAppraisalId(departmentId, userId);
       }),
     );
 
-    return teamMembers;
+    return teamMembers.flat();
   }
   async getAppraisalTeamMembersByAppraisalId(
     departmentId: string,
-  ): Promise<FormattedAppraisal[]> {
+    userId: string,
+  ): Promise<FormattedAppraisalResponse> {
     const appraisal = await this.appraisalRepository
       .createQueryBuilder('appraisal')
       .leftJoin('appraisal.appraisalUsers', 'appraisalUser')
@@ -45,19 +48,18 @@ export class AppraisalService {
       .leftJoin('appraisalUser.goals', 'goals')
       .where('appraisal.status = :status', { status: 'ongoing' })
       .andWhere('department.departmentId = :departmentId', { departmentId })
+      .andWhere('owner.userId != :userId', { userId })
       .select([
         'appraisal',
         'goals',
         'owner.userId',
         'owner.koreanName',
         'department.departmentName',
+        'department.departmentId',
       ])
       .getRawMany();
-    if (!appraisal || appraisal.length === 0) {
-      throw new NotFoundException('Appraisal not found');
-    }
 
-    return this.formatAppraisal(appraisal);
+    return formatAppraisalNested(appraisal);
   }
 
   private formatAppraisal(appraisal: RawAppraisalRow[]): FormattedAppraisal[] {

@@ -7,10 +7,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, QueryFailedError } from 'typeorm';
 import { Goal } from './goal.entity';
-import { CreateGoalPayload } from './goal.dto';
+import { CreateCommonGoalPayload, CreateGoalPayload } from './goal.dto';
 import { CustomException } from 'src/common/exceptions/custom-exception';
 import { GoalAssessmentBy } from 'src/goal-assessment-by/goal-assessment-by.entity';
 import { AppraisalUserService } from 'src/appraisal-user/appraisal-user.service';
+import { DepartmentService } from 'src/department/department.service';
+import { HramsUserDepartmentService } from 'src/hrams-user-department/hrams-user-department.service';
 
 @Injectable()
 export class GoalService {
@@ -21,6 +23,9 @@ export class GoalService {
     @InjectRepository(Goal)
     private readonly goalRepository: Repository<Goal>,
     private readonly appraisalUserService: AppraisalUserService,
+
+    private readonly departmentService: DepartmentService,
+    private readonly hramsUserDepartmentService: HramsUserDepartmentService,
   ) {}
 
   async createGoal(
@@ -108,6 +113,45 @@ export class GoalService {
         relations: ['goalAssessmentBy', 'goalAssessmentBy.gradedByUser'],
         order: { created: 'DESC' },
       });
+    } catch (error) {
+      this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
+
+  async createCommonGoalByLeader(
+    createCommonGoalPayload: CreateCommonGoalPayload,
+    leaderId: string,
+  ): Promise<Goal[]> {
+    try {
+      if (!leaderId) {
+        throw new BadRequestException('Leader ID is required');
+      }
+
+      const isLeader = await this.hramsUserDepartmentService.isLeader(
+        leaderId,
+        createCommonGoalPayload.departmentId,
+      );
+
+      if (!isLeader) {
+        throw new BadRequestException('User is not a leader');
+      }
+
+      const teamMeber =
+        await this.departmentService.getTeamMembersByDepartmentId(
+          createCommonGoalPayload.departmentId,
+        );
+
+      // console.log('@@teamMeber>> ', teamMeber);
+
+      const createCommonGoalsEveryTeamMember = await Promise.allSettled(
+        teamMeber.map((member) => {
+          return this.createGoal(createCommonGoalPayload, member.user_userId);
+        }),
+      );
+
+      return createCommonGoalsEveryTeamMember
+        .map((result) => (result.status === 'fulfilled' ? result.value : []))
+        .flat();
     } catch (error) {
       this.customException.handleException(error as QueryFailedError | Error);
     }

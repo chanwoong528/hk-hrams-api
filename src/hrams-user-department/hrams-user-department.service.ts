@@ -81,7 +81,16 @@ export class HramsUserDepartmentService {
       this.customException.handleException(error as QueryFailedError | Error);
     }
   }
-
+  async isLeader(userId: string, departmentId: string): Promise<boolean> {
+    const hramsUserDepartment =
+      await this.hramsUserDepartmentRepository.findOne({
+        where: { userId, departmentId },
+      });
+    if (!hramsUserDepartment) {
+      return false;
+    }
+    return hramsUserDepartment.isLeader;
+  }
   async getHramsUserDepartmentByDepartmentId(
     departmentId: string,
   ): Promise<HramsUserDepartment> {

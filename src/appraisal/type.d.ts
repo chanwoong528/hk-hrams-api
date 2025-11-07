@@ -45,6 +45,7 @@ interface RawAppraisalRow {
   appraisal_created: Date;
   appraisal_updated: Date;
   department_departmentName: string;
+  department_departmentId: string;
   appraisalUser_appraisalUserId: string;
   appraisalUser_status: string | null;
   owner_userId: string;
@@ -55,3 +56,36 @@ interface RawAppraisalRow {
   goals_created: Date | null;
   goals_updated: Date | null;
 }
+
+interface Goal {
+  goalId: string;
+  title: string;
+  description: string;
+  created: string; // ISO string (Date 형태로 쓰고 싶다면 Date 로 바꿔도 됨)
+  updated: string;
+}
+
+interface User {
+  userId: string;
+  koreanName: string;
+  goals: Goal[];
+}
+
+interface Appraisal {
+  appraisalId: string;
+  appraisalType: string;
+  title: string;
+  description: string;
+  endDate: string; // ISO string
+  status: string;
+  user: User[];
+}
+
+interface DepartmentAppraisal {
+  departmentName: string;
+  departmentId: string;
+  appraisal: Appraisal[];
+}
+
+// 전체 결과 타입
+type FormattedAppraisalResponse = DepartmentAppraisal[];

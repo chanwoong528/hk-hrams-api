@@ -11,7 +11,16 @@ import {
 import { CustomException } from 'src/common/exceptions/custom-exception';
 import { HramsUserService } from 'src/hrams-user/hrams-user.service';
 import { HramsUserDepartmentService } from 'src/hrams-user-department/hrams-user-department.service';
-
+interface TeamMember {
+  department_departmentId: string;
+  department_departmentName: string;
+  department_created: Date;
+  department_updated: Date;
+  hramsUserDepartments_isLeader: boolean;
+  user_userId: string;
+  user_koreanName: string;
+  user_email: string;
+}
 @Injectable()
 export class DepartmentService {
   private readonly customException = new CustomException('Department');
@@ -222,6 +231,34 @@ export class DepartmentService {
       }
 
       return department;
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
+
+  async getTeamMembersByDepartmentId(id: string): Promise<TeamMember[]> {
+    try {
+      const departmentQuery: TeamMember[] = await this.departmentRepository
+        .createQueryBuilder('department')
+        .leftJoin('department.hramsUserDepartments', 'hramsUserDepartments')
+        .leftJoin('hramsUserDepartments.user', 'user')
+        .select([
+          'department.departmentId',
+          'department.departmentName',
+          'department.created',
+          'department.updated',
+          'user.userId',
+          'user.koreanName',
+          'user.email',
+          'hramsUserDepartments.isLeader',
+        ])
+        .where('department.departmentId = :id', { id })
+        .andWhere('hramsUserDepartments.isLeader = :isLeader', {
+          isLeader: false,
+        })
+        .getRawMany();
+
+      return departmentQuery;
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);
     }

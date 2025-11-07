@@ -80,11 +80,14 @@ export class AppraisalController {
     };
   }
   @Get('appraisal-team-members')
+  @UseGuards(AuthGuard)
   async getAppraisalTeamMembers(
     @Query('departments') departments: string,
-  ): Promise<Response<FormattedAppraisal[][]>> {
+    @Request() request: Request,
+  ): Promise<Response<FormattedAppraisalResponse>> {
+    const { sub } = (await request['user']) as { sub: string };
     const ids = departments.split(',');
-    const data = await this.appraisalService.getAppraisalTeamMembers(ids);
+    const data = await this.appraisalService.getAppraisalTeamMembers(ids, sub);
 
     console.log('data>>> ', data);
     return {
