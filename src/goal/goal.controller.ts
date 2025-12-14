@@ -6,13 +6,20 @@ import {
   Param,
   UseGuards,
   Request,
+  Patch,
+  Delete,
 } from '@nestjs/common';
-import { CreateCommonGoalPayload, CreateGoalPayload } from './goal.dto';
+import {
+  CreateCommonGoalPayload,
+  CreateGoalPayload,
+  UpdateCommonGoalPayload,
+  DeleteCommonGoalPayload,
+} from './goal.dto';
 import { GoalService } from './goal.service';
 import { Goal } from './goal.entity';
 import { Response } from 'src/common/api-reponse/response-type';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { AuthGuard } from 'src/auth/auth.guard';
+import { AuthGuard } from '../auth/auth.guard';
 @ApiTags('Goal')
 @Controller()
 export class GoalController {
@@ -74,6 +81,41 @@ export class GoalController {
     //   message: 'Common goal created successfully',
     //   data,
     // };
+  }
+
+  @Patch('common-goal')
+  @UseGuards(AuthGuard)
+  async updateCommonGoal(
+    @Body() updateCommonGoalPayload: UpdateCommonGoalPayload,
+    @Request() request: Request,
+  ): Promise<Response<Goal[]>> {
+    const { sub } = (await request['user']) as { sub: string };
+
+    const data = await this.goalService.updateCommonGoalByLeader(
+      updateCommonGoalPayload,
+      sub,
+    );
+
+    return {
+      statusCode: 200,
+      message: 'Common goal updated successfully',
+      data: data,
+    };
+  }
+
+  @Delete('common-goal')
+  @UseGuards(AuthGuard)
+  async deleteCommonGoalByLeader(
+    @Body() payload: DeleteCommonGoalPayload,
+    @Request() request: Request,
+  ) {
+    const { sub } = (await request['user']) as { sub: string };
+    const data = await this.goalService.deleteCommonGoalByLeader(sub, payload);
+    return {
+      statusCode: 200,
+      message: 'Common goal deleted successfully',
+      data: data,
+    };
   }
 
   @Get('goal')

@@ -9,6 +9,20 @@ export interface CreateCommonGoalPayload {
   goals: Goal[];
 }
 
+export interface UpdateCommonGoalPayload {
+  appraisalId: string;
+  departmentId: string;
+  oldTitle: string;
+  newTitle: string;
+  newDescription: string;
+}
+
+export interface DeleteCommonGoalPayload {
+  appraisalId: string;
+  departmentId: string;
+  title: string;
+}
+
 export interface Goal {
   title: string;
   description: string;

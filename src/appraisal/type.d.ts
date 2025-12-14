@@ -55,6 +55,12 @@ interface RawAppraisalRow {
   goals_description: string | null;
   goals_created: Date | null;
   goals_updated: Date | null;
+  goalAssessmentBy_goalAssessId: string | null;
+  goalAssessmentBy_grade: string | null;
+  goalAssessmentBy_comment: string | null;
+  goalAssessmentBy_gradedBy: string | null;
+  gradedByUser_userId: string | null;
+  gradedByUser_koreanName: string | null;
 }
 
 interface Goal {
@@ -63,6 +69,16 @@ interface Goal {
   description: string;
   created: string; // ISO string (Date 형태로 쓰고 싶다면 Date 로 바꿔도 됨)
   updated: string;
+  goalAssessmentBy?: {
+    goalAssessId: string;
+    grade: string;
+    comment: string;
+    gradedBy: string;
+    gradedByUser?: {
+      userId: string;
+      koreanName: string;
+    };
+  }[];
 }
 
 interface User {

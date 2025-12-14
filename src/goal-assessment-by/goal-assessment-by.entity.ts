@@ -20,6 +20,9 @@ export class GoalAssessmentBy {
   @Column()
   grade: string;
 
+  @Column({ type: 'text', nullable: true })
+  comment: string;
+
   @CreateDateColumn()
   created: Date;
 
@@ -29,7 +32,7 @@ export class GoalAssessmentBy {
   @Column()
   goalId: string;
 
-  @ManyToOne(() => Goal)
+  @ManyToOne(() => Goal, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'goalId' })
   goal: Goal;
 

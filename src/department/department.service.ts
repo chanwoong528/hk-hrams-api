@@ -263,4 +263,19 @@ export class DepartmentService {
       this.customException.handleException(error as QueryFailedError | Error);
     }
   }
+  async getDescendants(departmentId: string): Promise<Department[]> {
+    try {
+      const department = await this.departmentRepository.findOne({
+        where: { departmentId },
+      });
+
+      if (!department) {
+        throw new NotFoundException('Department not found');
+      }
+
+      return await this.departmentRepository.findDescendants(department);
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
 }

@@ -5,8 +5,10 @@ import { AppraisalController } from './appraisal.controller';
 import { AppraisalService } from './appraisal.service';
 import { AuthModule } from 'src/auth/auth.module';
 
+import { DepartmentModule } from 'src/department/department.module';
+
 @Module({
-  imports: [TypeOrmModule.forFeature([Appraisal]), AuthModule],
+  imports: [TypeOrmModule.forFeature([Appraisal]), AuthModule, DepartmentModule],
   controllers: [AppraisalController],
   providers: [AppraisalService],
   exports: [AppraisalService],

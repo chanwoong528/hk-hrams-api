@@ -19,12 +19,27 @@ export class GoalAssessmentByService {
     createGoalAssessmentByPayload: CreateGoalAssessmentByPayload,
   ): Promise<GoalAssessmentBy> {
     try {
-      const result = await this.goalAssessmentByRepository.upsert(
-        createGoalAssessmentByPayload,
-        ['goalId', 'gradedBy'],
-      );
+      // Upsert: if exists for goalId + gradedBy, update it
+      // We need to check if it exists first or use upsert options if unique constraint exists
+      // Entity has @Unique(['goalId', 'gradedBy'])
+      
+      const existing = await this.goalAssessmentByRepository.findOne({
+        where: {
+          goalId: createGoalAssessmentByPayload.goalId,
+          gradedBy: createGoalAssessmentByPayload.gradedBy,
+        },
+      });
 
-      return result.generatedMaps[0] as GoalAssessmentBy;
+      if (existing) {
+        existing.grade = createGoalAssessmentByPayload.grade;
+        existing.comment = createGoalAssessmentByPayload.comment;
+        return await this.goalAssessmentByRepository.save(existing);
+      }
+
+      const newAssessment = this.goalAssessmentByRepository.create(
+        createGoalAssessmentByPayload,
+      );
+      return await this.goalAssessmentByRepository.save(newAssessment);
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);
     }

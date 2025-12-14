@@ -7,7 +7,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, QueryFailedError } from 'typeorm';
 import { Goal } from './goal.entity';
-import { CreateCommonGoalPayload, CreateGoalPayload } from './goal.dto';
+import {
+  CreateCommonGoalPayload,
+  CreateGoalPayload,
+  UpdateCommonGoalPayload,
+  DeleteCommonGoalPayload,
+} from './goal.dto';
 import { CustomException } from 'src/common/exceptions/custom-exception';
 import { GoalAssessmentBy } from 'src/goal-assessment-by/goal-assessment-by.entity';
 import { AppraisalUserService } from 'src/appraisal-user/appraisal-user.service';
@@ -154,6 +159,123 @@ export class GoalService {
         .flat();
     } catch (error) {
       this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
+
+  async updateCommonGoalByLeader(
+    updateCommonGoalPayload: UpdateCommonGoalPayload,
+    leaderId: string,
+  ): Promise<any> {
+    try {
+      if (!leaderId) {
+        throw new BadRequestException('Leader ID is required');
+      }
+
+      const isLeader = await this.hramsUserDepartmentService.isLeader(
+        leaderId,
+        updateCommonGoalPayload.departmentId,
+      );
+
+      if (!isLeader) {
+        throw new BadRequestException('User is not a leader');
+      }
+
+      const teamMembers =
+        await this.departmentService.getTeamMembersByDepartmentId(
+          updateCommonGoalPayload.departmentId,
+        );
+
+      const teamUserIds = teamMembers.map((m) => m.user_userId);
+
+      // 1. Find all goals that belong to these users AND have the old title
+      // We need to join with AppraisalUser -> HramsUser
+      const goalsToUpdate = await this.goalRepository
+        .createQueryBuilder('goal')
+        .innerJoinAndSelect('goal.appraisalUser', 'appraisalUser')
+        .innerJoinAndSelect('appraisalUser.owner', 'owner')
+        .where('owner.userId IN (:...teamUserIds)', { teamUserIds })
+        // We probably also want to filter by appraisalId to be safe
+        .andWhere('appraisalUser.appraisalId = :appraisalId', {
+          appraisalId: updateCommonGoalPayload.appraisalId,
+        })
+        .andWhere('goal.title = :oldTitle', {
+          oldTitle: updateCommonGoalPayload.oldTitle,
+        })
+        .getMany();
+
+      if (goalsToUpdate.length === 0) {
+        throw new NotFoundException('No common goals found to update');
+      }
+
+      // 2. Update them
+      await this.goalRepository
+        .createQueryBuilder()
+        .update(Goal)
+        .set({
+          title: updateCommonGoalPayload.newTitle,
+          description: updateCommonGoalPayload.newDescription,
+        })
+        .where('goalId IN (:...ids)', { ids: goalsToUpdate.map((g) => g.goalId) })
+        .execute();
+
+      return {
+        message: 'Common goal updated for all team members',
+      } as any; // Temporary fix or change return type in signature
+    } catch (e) {
+      console.error(e);
+      throw new CustomException('Failed to update common goal');
+    }
+  }
+
+  async deleteCommonGoalByLeader(
+    leaderId: string,
+    payload: DeleteCommonGoalPayload,
+  ) {
+    // 1. Check if the user is a leader of the department
+    const isLeader = await this.hramsUserDepartmentService.isLeader(
+      leaderId,
+      payload.departmentId,
+    );
+
+    if (!isLeader) {
+      throw new BadRequestException('User is not a leader');
+    }
+
+    // 2. Find goals for team members that match the title and appraisalId
+    try {
+      // Get all team members first to filter their goals
+      const teamMembers =
+        await this.departmentService.getTeamMembersByDepartmentId(
+          payload.departmentId,
+        );
+      
+      if (!teamMembers.length) {
+         return { message: 'No team members found' };
+      }
+      
+      const teamUserIds = teamMembers.map(u => u.user_userId);
+
+      const goalsToDelete = await this.goalRepository
+        .createQueryBuilder('goal')
+        .innerJoin('goal.appraisalUser', 'appraisalUser') // Join with appraisalUser
+        .innerJoin('appraisalUser.owner', 'owner') // Join with owner (HramsUser)
+        .where('owner.userId IN (:...userIds)', { userIds: teamUserIds })
+        .andWhere('appraisalUser.appraisalId = :appraisalId', { // Filter by appraisalId on appraisalUser
+          appraisalId: payload.appraisalId,
+        })
+        .andWhere('goal.title = :title', { title: payload.title })
+        .getMany();
+
+      if (goalsToDelete.length > 0) {
+        await this.goalRepository.remove(goalsToDelete);
+      }
+
+      return {
+        message: `${goalsToDelete.length} common goals deleted successfully`,
+      };
+    } catch (e) {
+      console.error(e);
+      throw new CustomException('Failed to delete common goal');
     }
   }
 }

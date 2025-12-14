@@ -8,6 +8,7 @@ import {
   Patch,
   Request,
   UseGuards,
+  Delete,
 } from '@nestjs/common';
 import { Appraisal } from './appraisal.entity';
 import {
@@ -128,6 +129,18 @@ export class AppraisalController {
       statusCode: 200,
       message: 'Appraisal updated successfully',
       data,
+    };
+  }
+
+  @Delete('appraisal/:appraisalId')
+  async deleteAppraisal(
+    @Param('appraisalId') appraisalId: string,
+  ): Promise<Response<void>> {
+    await this.appraisalService.deleteAppraisal(appraisalId);
+    return {
+      statusCode: 200,
+      message: 'Appraisal deleted successfully',
+      data: null,
     };
   }
 }

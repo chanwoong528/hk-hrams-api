@@ -13,6 +13,7 @@ import { Brackets, Like, QueryFailedError, Repository } from 'typeorm';
 
 import { CustomException } from 'src/common/exceptions/custom-exception';
 import { formatAppraisalNested } from './appraisal.adaptor';
+import { DepartmentService } from 'src/department/department.service';
 
 @Injectable()
 export class AppraisalService {
@@ -21,22 +22,32 @@ export class AppraisalService {
   constructor(
     @InjectRepository(Appraisal)
     private readonly appraisalRepository: Repository<Appraisal>,
+    private readonly departmentService: DepartmentService,
   ) {}
 
   async getAppraisalTeamMembers(
-    departments: string[],
+    departmentIds: string[],
     userId: string,
   ): Promise<FormattedAppraisalResponse> {
-    const teamMembers = await Promise.all(
-      departments.map((departmentId) => {
-        return this.getAppraisalTeamMembersByAppraisalId(departmentId, userId);
-      }),
-    );
+    
+    // 1. Get all descendants for each leader-department
+    const allDepartmentIds = new Set<string>();
 
-    return teamMembers.flat();
+    for (const deptId of departmentIds) {
+      const descendants = await this.departmentService.getDescendants(deptId);
+      descendants.forEach(d => allDepartmentIds.add(d.departmentId));
+    }
+    
+    // 2. Fetch members for ALL collected departments at once
+    const uniqueDepartmentIds = Array.from(allDepartmentIds);
+    
+    if (uniqueDepartmentIds.length === 0) return [];
+
+    return this.getAppraisalTeamMembersByAppraisalIds(uniqueDepartmentIds, userId);
   }
-  async getAppraisalTeamMembersByAppraisalId(
-    departmentId: string,
+
+  async getAppraisalTeamMembersByAppraisalIds(
+    departmentIds: string[],
     userId: string,
   ): Promise<FormattedAppraisalResponse> {
     const appraisal = await this.appraisalRepository
@@ -47,11 +58,18 @@ export class AppraisalService {
       .leftJoin('hud.department', 'department')
       .leftJoin('appraisalUser.goals', 'goals')
       .where('appraisal.status = :status', { status: 'ongoing' })
-      .andWhere('department.departmentId = :departmentId', { departmentId })
+      .andWhere('department.departmentId IN (:...departmentIds)', { 
+         departmentIds: departmentIds 
+      })
       .andWhere('owner.userId != :userId', { userId })
+      .leftJoinAndSelect('goals.goalAssessmentBy', 'goalAssessmentBy')
+      .leftJoinAndSelect('goalAssessmentBy.gradedByUser', 'gradedByUser')
       .select([
         'appraisal',
         'goals',
+        'goalAssessmentBy',
+        'gradedByUser.userId',
+        'gradedByUser.koreanName',
         'owner.userId',
         'owner.koreanName',
         'department.departmentName',
@@ -148,6 +166,8 @@ export class AppraisalService {
           'appraisalUsers',
           'appraisalUsers.owner',
           'appraisalUsers.goals',
+          'appraisalUsers.goals.goalAssessmentBy',
+          'appraisalUsers.goals.goalAssessmentBy.gradedByUser',
         ],
       });
 
@@ -239,6 +259,19 @@ export class AppraisalService {
         updateAppraisalPayload,
       );
       return await this.appraisalRepository.save(updatedAppraisal);
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
+  async deleteAppraisal(appraisalId: string): Promise<void> {
+    try {
+      const appraisal = await this.appraisalRepository.findOne({
+        where: { appraisalId },
+      });
+      if (!appraisal) {
+        throw new NotFoundException('Appraisal not found');
+      }
+      await this.appraisalRepository.delete(appraisalId);
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);
     }

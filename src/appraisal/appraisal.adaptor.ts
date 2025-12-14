@@ -58,14 +58,42 @@ export function formatAppraisalNested(
         const goalExists = userObj.goals.find(
           (g) => g.goalId === row.goals_goalId,
         );
-        if (!goalExists) {
-          userObj.goals.push({
+        
+        let goalObj = goalExists;
+        if (!goalObj) {
+          goalObj = {
             goalId: row.goals_goalId,
             title: row.goals_title,
             description: row.goals_description,
             created: row.goals_created.toISOString(),
             updated: row.goals_updated.toISOString(),
-          });
+            goalAssessmentBy: [],
+          };
+          userObj.goals.push(goalObj);
+        }
+
+        // 📝 Goal Assessment grouping
+        if (row.goalAssessmentBy_goalAssessId) {
+             if (!goalObj.goalAssessmentBy) {
+                 goalObj.goalAssessmentBy = [];
+             }
+             
+             const assessmentExists = goalObj.goalAssessmentBy.find(
+                 (a) => a.goalAssessId === row.goalAssessmentBy_goalAssessId
+             );
+             
+             if (!assessmentExists) {
+                 goalObj.goalAssessmentBy.push({
+                     goalAssessId: row.goalAssessmentBy_goalAssessId,
+                     grade: row.goalAssessmentBy_grade,
+                     comment: row.goalAssessmentBy_comment,
+                     gradedBy: row.goalAssessmentBy_gradedBy,
+                     gradedByUser: row.gradedByUser_userId ? {
+                        userId: row.gradedByUser_userId,
+                        koreanName: row.gradedByUser_koreanName
+                     } : undefined,
+                 });
+             }
         }
       }
 
