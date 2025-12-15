@@ -117,4 +117,16 @@ export class HramsUserDepartmentService {
       this.customException.handleException(error as QueryFailedError | Error);
     }
   }
+
+  async getAllHramsUserDepartmentByIsLeader(isLeader: boolean): Promise<HramsUserDepartment[]> {
+    try {
+      return await this.hramsUserDepartmentRepository.find({
+        where: { isLeader },
+        relations: ['user']
+      });
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+      return [];
+    }
+  }
 }

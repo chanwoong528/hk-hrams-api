@@ -174,6 +174,52 @@ export class HramsUserService {
     }
   }
 
+  async getAllLeaders(): Promise<HramsUser[]> {
+    try {
+      const hramsUserDepartments = await this.hramsUserDepartmentService.getAllHramsUserDepartmentByIsLeader(true);
+      // Dedup users just in case they are leaders of multiple departments
+      const leadersMap = new Map<string, HramsUser>();
+      hramsUserDepartments.forEach(hud => {
+         if (hud.user) {
+            leadersMap.set(hud.user.userId, hud.user);
+         }
+      });
+      return Array.from(leadersMap.values());
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+      return [];
+    }
+  }
+
+  async getTeamMembersOfLeader(leaderId: string): Promise<HramsUser[]> {
+    try {
+        // 1. Find departments where this user is a leader
+        const leaderDepts = await this.hramsUserDepartmentService.getHramsUserDepartmentsByUserId(leaderId);
+        const leadingDeptIds = leaderDepts
+            .filter(hud => hud.isLeader)
+            .map(hud => hud.departmentId);
+
+        if (leadingDeptIds.length === 0) return [];
+
+        // 2. Find all users in these departments
+        const membersMap = new Map<string, HramsUser>();
+        
+        await Promise.all(leadingDeptIds.map(async (deptId) => {
+            const members = await this.hramsUserDepartmentService.getHramsUsersByDepartmentId(deptId);
+            members.forEach(m => {
+                if (m.userId !== leaderId) { // Exclude the leader themselves
+                    membersMap.set(m.userId, m);
+                }
+            });
+        }));
+
+        return Array.from(membersMap.values());
+    } catch (error: unknown) {
+        this.customException.handleException(error as QueryFailedError | Error);
+        return [];
+    }
+  }
+
   async createHramsUser(
     createHramsUserPayload: CreateHramsUserPayload,
   ): Promise<HramsUser> {

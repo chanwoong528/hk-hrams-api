@@ -52,6 +52,17 @@ export class HramsUserController {
     };
   }
 
+  @Get('leaders')
+  @UseGuards(AuthGuard)
+  async getAllLeaders() {
+    const data = await this.hrUserService.getAllLeaders();
+    return {
+      statusCode: 200,
+      message: 'Leaders fetched successfully',
+      data,
+    };
+  }
+
   @Post()
   // @UseGuards(AuthGuard)
   async createHramsUser(

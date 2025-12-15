@@ -13,6 +13,7 @@ import { HramsUserModule } from './hrams-user/hrams-user.module';
 import { DepartmentModule } from './department/department.module';
 import { HramsUserDepartmentModule } from './hrams-user-department/hrams-user-department.module';
 import { AuthModule } from './auth/auth.module';
+import { LeaderReviewModule } from './leader-review/leader-review.module';
 
 @Module({
   imports: [
@@ -68,8 +69,9 @@ import { AuthModule } from './auth/auth.module';
     DepartmentModule,
     HramsUserDepartmentModule,
     AuthModule,
+    LeaderReviewModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {} // Trigger Rebuild
