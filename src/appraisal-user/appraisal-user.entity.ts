@@ -11,6 +11,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Goal } from 'src/goal/goal.entity';
+import { AppraisalBy } from 'src/appraisal-by/appraisal-by.entity';
 
 @Entity({
   name: 'appraisal_user',
@@ -47,10 +48,16 @@ export class AppraisalUser {
   @JoinColumn({ name: 'assessedById' })
   assessedBy: HramsUser;
 
-  //GOALS >> CASCADE DELETE
   @OneToMany(() => Goal, (goal) => goal.appraisalUser, {
     cascade: true,
     onDelete: 'CASCADE',
   })
   goals: Goal[];
+
+  //APPRAISAL ASSESSMENT >> CASCADE DELETE
+  @OneToMany(() => AppraisalBy, (appraisalBy) => appraisalBy.appraisalUser, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  appraisalBy: AppraisalBy[];
 }

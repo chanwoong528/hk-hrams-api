@@ -36,6 +36,10 @@ export class Appraisal {
   @Column({ default: 'draft' })
   status: string; // "ongoing" | "draft" | "finished"
 
+  @Column({ nullable: true })
+  createdBy: string;
+
+
   @CreateDateColumn()
   created: Date;
 

@@ -48,6 +48,15 @@ interface RawAppraisalRow {
   department_departmentId: string;
   appraisalUser_appraisalUserId: string;
   appraisalUser_status: string | null;
+  appraisalUser_status: string | null;
+  // Flattened AppraisalBy fields
+  appraisalBy_appraisalById: string | null;
+  appraisalBy_grade: string | null;
+  appraisalBy_comment: string | null;
+  appraisalBy_assessType: string | null;
+  appraisalBy_assessTerm: string | null;
+  appraisalBy_assessedById: string | null;
+  appraisalBy_updated: Date | null;
   owner_userId: string;
   owner_koreanName: string;
   goals_goalId: string | null;
@@ -83,6 +92,19 @@ interface Goal {
 
 interface User {
   userId: string;
+  appraisalUserId?: string;
+  status?: string;
+  selfAssessment?: {
+    grade: string;
+    comment: string;
+    updated?: string;
+  };
+  assessments: {
+    grade: string;
+    comment: string;
+    assessedById: string;
+    updated?: string;
+  }[];
   koreanName: string;
   goals: Goal[];
 }

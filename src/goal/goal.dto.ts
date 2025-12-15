@@ -26,4 +26,5 @@ export interface DeleteCommonGoalPayload {
 export interface Goal {
   title: string;
   description: string;
+  goalType?: string;
 }

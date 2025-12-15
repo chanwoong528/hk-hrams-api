@@ -33,20 +33,50 @@ export function formatAppraisalNested(
         department.appraisal.push(appraisalObj);
       }
 
-      // 👤 user grouping
+      // 2. Find or create User
       let userObj = appraisalObj.user.find(
-        (u) => u.userId === row.owner_userId,
+        (u) => u.appraisalUserId === row.appraisalUser_appraisalUserId,
       );
-      if (!userObj && row.owner_userId) {
+
+      if (!userObj) {
         userObj = {
           userId: row.owner_userId,
+          appraisalUserId: row.appraisalUser_appraisalUserId,
+          status: row.appraisalUser_status,
+          selfAssessment: undefined, // Initialize
+          assessments: [], // Initialize
           koreanName: row.owner_koreanName,
           goals: [],
         };
         appraisalObj.user.push(userObj);
       }
 
-      // 🎯 goal grouping
+      // Map Self Assessment if present in this row (and matches owner)
+      if (
+        row.appraisalBy_appraisalById
+      ) {
+        // Add to general assessments list
+        const exists = userObj.assessments.find(a => a.assessedById === row.appraisalBy_assessedById);
+        if (!exists && row.appraisalBy_assessedById) {
+          userObj.assessments.push({
+            grade: row.appraisalBy_grade || '',
+            comment: row.appraisalBy_comment || '',
+            assessedById: row.appraisalBy_assessedById,
+            updated: row.appraisalBy_updated ? row.appraisalBy_updated.toISOString() : undefined
+          });
+        }
+
+        // Add to explicit selfAssessment field if it's the owner
+        if (row.appraisalBy_assessedById === row.owner_userId) {
+          userObj.selfAssessment = {
+            grade: row.appraisalBy_grade,
+            comment: row.appraisalBy_comment,
+            updated: row.appraisalBy_updated ? row.appraisalBy_updated.toISOString() : undefined
+          };
+        }
+      }
+
+      // 3. Find or create Goal
       if (
         row.goals_goalId &&
         row.goals_title &&
@@ -58,7 +88,7 @@ export function formatAppraisalNested(
         const goalExists = userObj.goals.find(
           (g) => g.goalId === row.goals_goalId,
         );
-        
+
         let goalObj = goalExists;
         if (!goalObj) {
           goalObj = {
@@ -74,26 +104,26 @@ export function formatAppraisalNested(
 
         // 📝 Goal Assessment grouping
         if (row.goalAssessmentBy_goalAssessId) {
-             if (!goalObj.goalAssessmentBy) {
-                 goalObj.goalAssessmentBy = [];
-             }
-             
-             const assessmentExists = goalObj.goalAssessmentBy.find(
-                 (a) => a.goalAssessId === row.goalAssessmentBy_goalAssessId
-             );
-             
-             if (!assessmentExists) {
-                 goalObj.goalAssessmentBy.push({
-                     goalAssessId: row.goalAssessmentBy_goalAssessId,
-                     grade: row.goalAssessmentBy_grade,
-                     comment: row.goalAssessmentBy_comment,
-                     gradedBy: row.goalAssessmentBy_gradedBy,
-                     gradedByUser: row.gradedByUser_userId ? {
-                        userId: row.gradedByUser_userId,
-                        koreanName: row.gradedByUser_koreanName
-                     } : undefined,
-                 });
-             }
+          if (!goalObj.goalAssessmentBy) {
+            goalObj.goalAssessmentBy = [];
+          }
+
+          const assessmentExists = goalObj.goalAssessmentBy.find(
+            (a) => a.goalAssessId === row.goalAssessmentBy_goalAssessId
+          );
+
+          if (!assessmentExists) {
+            goalObj.goalAssessmentBy.push({
+              goalAssessId: row.goalAssessmentBy_goalAssessId,
+              grade: row.goalAssessmentBy_grade,
+              comment: row.goalAssessmentBy_comment,
+              gradedBy: row.goalAssessmentBy_gradedBy,
+              gradedByUser: row.gradedByUser_userId ? {
+                userId: row.gradedByUser_userId,
+                koreanName: row.gradedByUser_koreanName
+              } : undefined,
+            });
+          }
         }
       }
 

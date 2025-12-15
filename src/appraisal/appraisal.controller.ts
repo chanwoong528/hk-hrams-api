@@ -21,7 +21,7 @@ import { AuthGuard } from 'src/auth/auth.guard';
 
 @Controller()
 export class AppraisalController {
-  constructor(private readonly appraisalService: AppraisalService) {}
+  constructor(private readonly appraisalService: AppraisalService) { }
 
   @Get('appraisal')
   @UseGuards(AuthGuard)
@@ -98,12 +98,16 @@ export class AppraisalController {
     };
   }
   @Post('appraisal')
+  @UseGuards(AuthGuard)
   async createAppraisal(
     @Body()
     createAppraisalPayload: CreateAppraisalPayload,
+    @Request() request: Request,
   ): Promise<Response<Appraisal>> {
+    const { sub } = (await request['user']) as { sub: string };
     const data = await this.appraisalService.createAppraisal(
       createAppraisalPayload,
+      sub,
     );
 
     return {

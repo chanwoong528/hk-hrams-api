@@ -14,6 +14,7 @@ import { Brackets, Like, QueryFailedError, Repository } from 'typeorm';
 import { CustomException } from 'src/common/exceptions/custom-exception';
 import { formatAppraisalNested } from './appraisal.adaptor';
 import { DepartmentService } from 'src/department/department.service';
+import { HramsUserService } from 'src/hrams-user/hrams-user.service';
 
 @Injectable()
 export class AppraisalService {
@@ -23,13 +24,14 @@ export class AppraisalService {
     @InjectRepository(Appraisal)
     private readonly appraisalRepository: Repository<Appraisal>,
     private readonly departmentService: DepartmentService,
-  ) {}
+    private readonly hramsUserService: HramsUserService,
+  ) { }
 
   async getAppraisalTeamMembers(
     departmentIds: string[],
     userId: string,
   ): Promise<FormattedAppraisalResponse> {
-    
+
     // 1. Get all descendants for each leader-department
     const allDepartmentIds = new Set<string>();
 
@@ -37,10 +39,10 @@ export class AppraisalService {
       const descendants = await this.departmentService.getDescendants(deptId);
       descendants.forEach(d => allDepartmentIds.add(d.departmentId));
     }
-    
+
     // 2. Fetch members for ALL collected departments at once
     const uniqueDepartmentIds = Array.from(allDepartmentIds);
-    
+
     if (uniqueDepartmentIds.length === 0) return [];
 
     return this.getAppraisalTeamMembersByAppraisalIds(uniqueDepartmentIds, userId);
@@ -56,24 +58,49 @@ export class AppraisalService {
       .leftJoin('appraisalUser.owner', 'owner')
       .leftJoin('owner.hramsUserDepartments', 'hud')
       .leftJoin('hud.department', 'department')
-      .leftJoin('appraisalUser.goals', 'goals')
       .where('appraisal.status = :status', { status: 'ongoing' })
-      .andWhere('department.departmentId IN (:...departmentIds)', { 
-         departmentIds: departmentIds 
+      .andWhere('department.departmentId IN (:...departmentIds)', {
+        departmentIds: departmentIds
       })
       .andWhere('owner.userId != :userId', { userId })
+      .leftJoinAndSelect('appraisalUser.goals', 'goals')
       .leftJoinAndSelect('goals.goalAssessmentBy', 'goalAssessmentBy')
       .leftJoinAndSelect('goalAssessmentBy.gradedByUser', 'gradedByUser')
+      .leftJoinAndSelect('appraisalUser.appraisalBy', 'appraisalBy') // Added Join
       .select([
-        'appraisal',
-        'goals',
-        'goalAssessmentBy',
-        'gradedByUser.userId',
-        'gradedByUser.koreanName',
-        'owner.userId',
-        'owner.koreanName',
+        'appraisal.appraisalId',
+        'appraisal.appraisalType',
+        'appraisal.title',
+        'appraisal.description',
+        'appraisal.endDate',
+        'appraisal.status',
+        'appraisal.created',
+        'appraisal.updated',
         'department.departmentName',
         'department.departmentId',
+        'appraisalUser.appraisalUserId',
+        'appraisalUser.status',
+        'owner.userId',
+        'owner.koreanName',
+        'goals.goalId',
+        'goals.title',
+        'goals.description',
+        'goals.created',
+        'goals.updated',
+        'goalAssessmentBy.goalAssessId',
+        'goalAssessmentBy.grade',
+        'goalAssessmentBy.gradedBy',
+        'goalAssessmentBy.comment',
+        'gradedByUser.userId',
+        'gradedByUser.koreanName',
+        // Select AppraisalBy fields
+        'appraisalBy.appraisalById',
+        'appraisalBy.grade',
+        'appraisalBy.comment',
+        'appraisalBy.assessType',
+        'appraisalBy.assessTerm',
+        'appraisalBy.assessedById',
+        'appraisalBy.updated', // Added updated column
       ])
       .getRawMany();
 
@@ -111,7 +138,7 @@ export class AppraisalService {
     page: number = 1,
     limit: number = 10,
     keyword?: string,
-  ): Promise<{ list: Appraisal[]; total: number }> {
+  ): Promise<{ list: any[]; total: number }> { // Changed return type to any[] or extending Appraisal to include creator
     try {
       const appraisal = await this.appraisalRepository.findOne({
         where: { appraisalId },
@@ -131,8 +158,15 @@ export class AppraisalService {
         relations: ['appraisalUsers', 'appraisalUsers.owner'],
       });
 
+      // Manually join Creator
+      let creator = null;
+      if (appraisal.createdBy) {
+        creator = await this.hramsUserService.getHramsUserById(appraisal.createdBy);
+      }
+
       const list = appraisals.map((appraisal) => ({
         ...appraisal,
+        creator: creator, // Attach creator info
       }));
 
       return {
@@ -165,18 +199,47 @@ export class AppraisalService {
         relations: [
           'appraisalUsers',
           'appraisalUsers.owner',
+          'appraisalUsers.appraisalBy', // Added relation
+          'appraisalUsers.appraisalBy.assessedBy', // Added relation to be safe
           'appraisalUsers.goals',
           'appraisalUsers.goals.goalAssessmentBy',
           'appraisalUsers.goals.goalAssessmentBy.gradedByUser',
         ],
       });
 
-      return appraisals.map((appraisal) => ({
-        ...appraisal,
-        goals: appraisal.appraisalUsers.flatMap(
-          (appraisalUser) => appraisalUser.goals,
-        ),
-      }));
+      return appraisals.map((appraisal) => {
+        const myAppraisalUser = appraisal.appraisalUsers.find(
+          (au) => au.owner.userId === userId,
+        );
+
+        // Debug Log
+        if (myAppraisalUser) {
+          console.log(`[getMyAppraisal] Found User: ${userId}`);
+          console.log(`[getMyAppraisal] AppraisalBy Count: ${myAppraisalUser.appraisalBy?.length}`);
+          myAppraisalUser.appraisalBy?.forEach((ab, idx) => {
+            console.log(`[getMyAppraisal] Entry ${idx}: ID=${ab.appraisalById}, AssessedById=${ab.assessedById}, assessedByRel=${ab.assessedBy?.userId}, Grade=${ab.grade}`);
+          });
+        }
+
+        // Find self assessment (Check both ID column and Relation object)
+        const selfAssessmentData = myAppraisalUser?.appraisalBy?.find(
+          ab => ab.assessedById === userId || ab.assessedBy?.userId === userId
+        );
+
+        return {
+          ...appraisal,
+          appraisalUserId: myAppraisalUser?.appraisalUserId,
+          status: myAppraisalUser?.status,
+          selfAssessment: selfAssessmentData ? {
+            grade: selfAssessmentData.grade,
+            comment: selfAssessmentData.comment,
+            updated: selfAssessmentData.updated ? selfAssessmentData.updated.toISOString() : undefined
+          } : undefined,
+          goals: appraisal.appraisalUsers.flatMap(
+            (appraisalUser) => appraisalUser.goals,
+          ),
+        };
+      });
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);
     }
@@ -225,6 +288,7 @@ export class AppraisalService {
 
   async createAppraisal(
     createAppraisalPayload: CreateAppraisalPayload,
+    userId: string,
   ): Promise<Appraisal> {
     //maybe have to make as message queue to handle many input to be inserted
     try {
@@ -233,6 +297,7 @@ export class AppraisalService {
         appraisalType: createAppraisalPayload.appraisalType,
         description: createAppraisalPayload.description,
         endDate: createAppraisalPayload.endDate,
+        createdBy: userId,
       });
 
       const result = await this.appraisalRepository.save(appraisal);

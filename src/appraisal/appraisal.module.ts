@@ -7,10 +7,12 @@ import { AuthModule } from 'src/auth/auth.module';
 
 import { DepartmentModule } from 'src/department/department.module';
 
+import { HramsUserModule } from 'src/hrams-user/hrams-user.module';
+
 @Module({
-  imports: [TypeOrmModule.forFeature([Appraisal]), AuthModule, DepartmentModule],
+  imports: [TypeOrmModule.forFeature([Appraisal]), AuthModule, DepartmentModule, HramsUserModule],
   controllers: [AppraisalController],
   providers: [AppraisalService],
   exports: [AppraisalService],
 })
-export class AppraisalModule {}
+export class AppraisalModule { }

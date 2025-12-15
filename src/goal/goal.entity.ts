@@ -22,6 +22,9 @@ export class Goal {
   @Column()
   description: string;
 
+  @Column({ default: 'personal' })
+  goalType: string; // 'personal' | 'common'
+
   @CreateDateColumn()
   created: Date;
   @UpdateDateColumn()

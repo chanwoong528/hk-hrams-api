@@ -23,7 +23,7 @@ import { AuthGuard } from '../auth/auth.guard';
 @ApiTags('Goal')
 @Controller()
 export class GoalController {
-  constructor(private readonly goalService: GoalService) {}
+  constructor(private readonly goalService: GoalService) { }
 
   @ApiOperation({ summary: 'Create a new goal' })
   @ApiResponse({ status: 400, description: 'Bad Request' })
@@ -141,12 +141,13 @@ export class GoalController {
     };
   }
 
-  @Get('goal/:appraisalId')
+  @Get('goal/appraisal/:appraisalId')
+  @UseGuards(AuthGuard)
   async getGoalByUserIdAndAppraisalId(
     @Param('appraisalId') appraisalId: string,
     @Request() request: Request,
   ): Promise<Response<Goal[]>> {
-    const { userId } = (await request['user']) as { userId: string };
+    const { sub: userId } = (await request['user']) as { sub: string };
     const data = await this.goalService.getGoalByUserIdAndAppraisalId(
       userId,
       appraisalId,
@@ -154,6 +155,36 @@ export class GoalController {
     return {
       statusCode: 200,
       message: 'Goals fetched successfully',
+      data,
+    };
+  }
+  @Patch('goal/:goalId')
+  @UseGuards(AuthGuard)
+  async updateGoal(
+    @Param('goalId') goalId: string,
+    @Body() payload: { title: string; description: string },
+    @Request() request: Request,
+  ): Promise<Response<Goal>> {
+    const { sub: userId } = (await request['user']) as { sub: string };
+    const data = await this.goalService.updateGoal(goalId, userId, payload);
+    return {
+      statusCode: 200,
+      message: 'Goal updated successfully',
+      data,
+    };
+  }
+
+  @Delete('goal/:goalId')
+  @UseGuards(AuthGuard)
+  async deleteGoal(
+    @Param('goalId') goalId: string,
+    @Request() request: Request,
+  ) {
+    const { sub: userId } = (await request['user']) as { sub: string };
+    const data = await this.goalService.deleteGoal(goalId, userId);
+    return {
+      statusCode: 200,
+      message: 'Goal deleted successfully',
       data,
     };
   }

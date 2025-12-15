@@ -15,7 +15,7 @@ export class AppraisalUserService {
     private readonly appraisalUserRepository: Repository<AppraisalUser>,
 
     private readonly hramsUserService: HramsUserService,
-  ) {}
+  ) { }
 
   async createAppraisalUser(
     appraisalId: string,
@@ -124,6 +124,20 @@ export class AppraisalUserService {
         })),
         total: total,
       };
+    } catch (error: unknown) {
+      this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
+
+  async updateAppraisalUser(
+    appraisalUserId: string,
+    updateData: Partial<AppraisalUser>,
+  ): Promise<AppraisalUser> {
+    try {
+      await this.appraisalUserRepository.update(appraisalUserId, updateData);
+      return await this.appraisalUserRepository.findOne({
+        where: { appraisalUserId },
+      });
     } catch (error: unknown) {
       this.customException.handleException(error as QueryFailedError | Error);
     }

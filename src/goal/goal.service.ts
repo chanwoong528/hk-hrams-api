@@ -31,7 +31,7 @@ export class GoalService {
 
     private readonly departmentService: DepartmentService,
     private readonly hramsUserDepartmentService: HramsUserDepartmentService,
-  ) {}
+  ) { }
 
   async createGoal(
     createGoalPayload: CreateGoalPayload,
@@ -49,6 +49,7 @@ export class GoalService {
       }
 
       const goals = createGoalPayload.goals.map((goal) => {
+        console.log('[DEBUG] Creating goal with type:', goal.goalType);
         return this.goalRepository.create({
           ...goal,
           appraisalUser,
@@ -73,6 +74,7 @@ export class GoalService {
       const goals = await this.goalRepository.find({
         where: {
           appraisalUser: { owner: { userId } },
+          goalType: 'personal', // Filter for personal goals only
           // appraisal: { appraisalId },
         },
         relations: ['appraisalUser'],
@@ -149,8 +151,33 @@ export class GoalService {
       // console.log('@@teamMeber>> ', teamMeber);
 
       const createCommonGoalsEveryTeamMember = await Promise.allSettled(
-        teamMeber.map((member) => {
-          return this.createGoal(createCommonGoalPayload, member.user_userId);
+        teamMeber.map(async (member) => {
+          // Side Effect: Reset status to 'ongoing' if currently 'submitted'
+          // We need to find the specific appraisalUser for this member and appraisalId
+          const appraisalUser = await this.appraisalUserService.getAppraisalUserByUserIdAndAppraisalId(
+            member.user_userId,
+            createCommonGoalPayload.appraisalId
+          );
+
+          console.log(`[GoalService] Processing member: ${member.user_userId} for Appraisal: ${createCommonGoalPayload.appraisalId}`);
+
+          if (appraisalUser) {
+            console.log(`[GoalService] Found AppraisalUser Status: ${appraisalUser.status}`);
+            if (appraisalUser.status === 'submitted' || appraisalUser.status === 'finished') {
+              console.log(`[GoalService] Resetting status to ongoing...`);
+              await this.appraisalUserService.updateAppraisalUser(appraisalUser.appraisalUserId, { status: 'ongoing' });
+            }
+          } else {
+            console.log(`[GoalService] AppraisalUser NOT FOUND`);
+          }
+
+          return this.createGoal(
+            {
+              appraisalId: createCommonGoalPayload.appraisalId,
+              goals: createCommonGoalPayload.goals.map(g => ({ ...g, goalType: 'common' })),
+            },
+            member.user_userId,
+          );
         }),
       );
 
@@ -248,11 +275,11 @@ export class GoalService {
         await this.departmentService.getTeamMembersByDepartmentId(
           payload.departmentId,
         );
-      
+
       if (!teamMembers.length) {
-         return { message: 'No team members found' };
+        return { message: 'No team members found' };
       }
-      
+
       const teamUserIds = teamMembers.map(u => u.user_userId);
 
       const goalsToDelete = await this.goalRepository
@@ -276,6 +303,62 @@ export class GoalService {
     } catch (e) {
       console.error(e);
       throw new CustomException('Failed to delete common goal');
+    }
+    // ... existing code ...
+  }
+
+  async updateGoal(
+    goalId: string,
+    userId: string,
+    payload: { title: string; description: string },
+  ) {
+    try {
+      const goal = await this.goalRepository.findOne({
+        where: { goalId },
+        relations: ['appraisalUser', 'appraisalUser.owner'],
+      });
+
+      if (!goal) {
+        throw new NotFoundException('Goal not found');
+      }
+
+      if (goal.appraisalUser.owner.userId !== userId) {
+        throw new BadRequestException('You are not the owner of this goal');
+      }
+
+      goal.title = payload.title;
+      goal.description = payload.description;
+
+      return await this.goalRepository.save(goal);
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      this.customException.handleException(error as QueryFailedError | Error);
+    }
+  }
+
+  async deleteGoal(goalId: string, userId: string) {
+    try {
+      const goal = await this.goalRepository.findOne({
+        where: { goalId },
+        relations: ['appraisalUser', 'appraisalUser.owner'],
+      });
+
+      if (!goal) {
+        throw new NotFoundException('Goal not found');
+      }
+
+      if (goal.appraisalUser.owner.userId !== userId) {
+        throw new BadRequestException('You are not the owner of this goal');
+      }
+
+      return await this.goalRepository.remove(goal);
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      this.customException.handleException(error as QueryFailedError | Error);
     }
   }
 }
