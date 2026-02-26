@@ -14,12 +14,20 @@ jobs:
 
       - name: Deploy to API Server
         run: |
-          # 1. Secret에서 키를 가져와 임시 pem 파일 생성 및 권한 설정
-          echo "${{ secrets.BASTION_SSH_KEY }}" > ./api-key.pem
-          chmod 600 ./api-key.pem
+          # 1. 키 파일 생성
+          echo "${{ secrets.BASTION_SSH_KEY }}" > api-key.pem
+          chmod 400 api-key.pem  # 600보다 더 엄격한 400 권한 추천
 
-          # 2. SSH 접속 및 명령어 실행
-          ssh -o StrictHostKeyChecking=no -i ./api-key.pem ec2-user@10.0.136.140 "cd /var/www/api && git pull origin main && pnpm install && pnpm run build && (pm2 restart api-server || pm2 start dist/main.js --name 'api-server')"
+          # 2. SSH 접속 시도 (실패 시에도 스크립트 중단 방지를 위해 trap 설정 가능)
+          # -o ConnectTimeout=10 을 추가하면 서버 다운 시 무한 대기를 방지합니다.
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i api-key.pem ec2-user@10.0.136.140 "
+            cd /var/www/api &&
+            git pull origin main &&
+            pnpm install &&
+            pnpm run build &&
+            pm2 delete api-server || true && 
+            pm2 start dist/main.js --name 'api-server'
+          "
 
-          # 3. 보안을 위해 임시 pem 파일 삭제
-          rm -f ./api-key.pem
+          # 3. 반드시 키 파일 삭제
+          rm -f api-key.pem
