@@ -29,13 +29,15 @@ jobs:
           echo "${{ secrets.BASTION_SSH_KEY }}" > api-key.pem
           chmod 400 api-key.pem
 
-          # 1. 빌드 전 스크립트 실행 허용 및 빌드
+          # 1. 빌드 수행 (bcrypt 등 네이티브 모듈 빌드 허용)
           pnpm config set only-allow-authenticated-updates false
           pnpm install --no-frozen-lockfile
+          # bcrypt가 정상 작동하도록 빌드 스크립트 실행 허용
+          pnpm approve-builds
           pnpm run build
 
-          # 2. 압축 (폴더 구조를 무시하고 내용물만 압축하기 위해 cd 사용)
-          # dist, package.json, node_modules를 한데 모아 압축합니다.
+          # 2. 압축 (핵심: 파일들이 /var/www/api 바로 아래에 풀리도록 설정)
+          # zip 파일 내부에 상위 폴더가 생기지 않도록 파일 목록을 정확히 지정합니다.
           zip -rq deploy_package.zip dist package.json node_modules
 
           # 3. 전송
@@ -43,14 +45,25 @@ jobs:
 
           # 4. API 서버에서 압축 해제 및 실행
           ssh -i api-key.pem -o StrictHostKeyChecking=no ec2-user@10.0.136.140 "
+            # 기존 내용 완전 삭제
             sudo rm -rf /var/www/api/*
-            # unzip이 /usr/bin에 없다면 아까 옮긴 경로(/home/ec2-user/unzip)를 사용하세요.
-            unzip -q /home/ec2-user/deploy_package.zip -d /var/www/api/
+            
+            # 압축 해제 (unzip이 /usr/bin에 없다면 /home/ec2-user/unzip 사용)
+            # -o 옵션은 기존 파일 덮어쓰기 허용입니다.
+            unzip -o -q /home/ec2-user/deploy_package.zip -d /var/www/api/
+            
+            # 소유권 변경 (중요: ec2-user가 실행할 수 있도록)
+            sudo chown -R ec2-user:ec2-user /var/www/api
             
             cd /var/www/api &&
+            # PM2 실행 (경로를 다시 한번 확인)
             node /home/ec2-user/pm2-bundle/bin/pm2 delete api-server || true &&
-            # 파일이 존재하는지 확인하는 로그 추가 (디버깅용)
-            ls -al /var/www/api/dist/main.js &&
+            
+            # 디버깅용: 파일이 제대로 들어왔는지 리스트 출력
+            ls -F /var/www/api/dist/ &&
+            
             node /home/ec2-user/pm2-bundle/bin/pm2 start /var/www/api/dist/main.js --name 'api-server'
+            
+            rm /home/ec2-user/deploy_package.zip
           "
           rm -f api-key.pem deploy_package.zip
