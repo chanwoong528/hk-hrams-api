@@ -9,25 +9,23 @@ jobs:
   deploy:
     runs-on: self-hosted # 방금 만든 Bastion 러너 사용
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Deploy to API Server
+      - name: Build and Sync to API Server
         run: |
-          # 1. 키 파일 생성
+          # 1. Bastion(러너)에서 빌드 수행
+          pnpm install
+          pnpm run build
+
+          # 2. 빌드된 결과물만 API 서버로 전송 (rsync 사용)
           echo "${{ secrets.BASTION_SSH_KEY }}" > api-key.pem
-          chmod 400 api-key.pem  # 600보다 더 엄격한 400 권한 추천
+          chmod 400 api-key.pem
 
-          # 2. SSH 접속 시도 (실패 시에도 스크립트 중단 방지를 위해 trap 설정 가능)
-          # -o ConnectTimeout=10 을 추가하면 서버 다운 시 무한 대기를 방지합니다.
-          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i api-key.pem ec2-user@10.0.136.140 "
-            cd /var/www/api &&
-            git pull origin main &&
-            pnpm install &&
-            pnpm run build &&
-            pm2 delete api-server || true && 
-            pm2 start dist/main.js --name 'api-server'
+          # dist 폴더와 package.json 등 실행에 필요한 파일만 전송
+          rsync -avz -e "ssh -i api-key.pem -o StrictHostKeyChecking=no" \
+            ./dist ./package.json ./pnpm-lock.yaml \
+            ec2-user@10.0.136.140:/var/www/api/
+
+          # 3. API 서버에서 프로세스 재시작 명령만 실행
+          ssh -i api-key.pem -o StrictHostKeyChecking=no ec2-user@10.0.136.140 "
+            cd /var/www/api && pnpm install --prod && pm2 restart all || pm2 start dist/main.js --name 'api-server'
           "
-
-          # 3. 반드시 키 파일 삭제
           rm -f api-key.pem
