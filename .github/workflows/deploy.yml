@@ -24,24 +24,25 @@ jobs:
         with:
           version: 10
           run_install: false
-      - name: Build and Sync to API Server
+      - name: Deploy to API Server
         run: |
-          # 1. SSH 키 준비
           echo "${{ secrets.BASTION_SSH_KEY }}" > api-key.pem
           chmod 400 api-key.pem
 
-          # 2. 빌드 및 파일 전송 (dist, node_modules 등)
+          # 1. 빌드 및 전송
           pnpm install && pnpm run build
+          # --delete 옵션을 추가하여 불필요한 옛날 파일을 정리합니다.
           rsync -avz -e "ssh -i api-key.pem -o StrictHostKeyChecking=no" \
-            --exclude '.git' \
+            --delete --exclude '.git' \
             ./dist ./package.json ./node_modules \
             ec2-user@10.0.136.140:/var/www/api/
 
-          # 3. API 서버에서 번들링된 PM2로 서버 재시작
+          # 2. API 서버에서 서버 기동
           ssh -i api-key.pem -o StrictHostKeyChecking=no ec2-user@10.0.136.140 "
             cd /var/www/api &&
-            node /home/ec2-user/pm2-bundle/bin/pm2 reload api-server || \
-            node /home/ec2-user/pm2-bundle/bin/pm2 start dist/main.js --name 'api-server'
+            # pm2가 프로세스를 못 찾으면(delete) 새로 시작(start)하도록 구성
+            node /home/ec2-user/pm2-bundle/bin/pm2 delete api-server || true &&
+            node /home/ec2-user/pm2-bundle/bin/pm2 start /var/www/api/dist/main.js --name 'api-server'
           "
 
           rm -f api-key.pem
