@@ -26,21 +26,27 @@ jobs:
           run_install: false
       - name: Build and Sync to API Server
         run: |
-          # 1. Bastion(러너)에서 빌드 수행
+          # 1. Bastion(러너)에서 빌드 및 프로덕션 의존성 설치
           pnpm install
           pnpm run build
+          # 배포 효율을 위해 프로덕션용 모듈만 남기거나, 전체를 보낼 준비를 합니다.
 
-          # 2. 빌드된 결과물만 API 서버로 전송 (rsync 사용)
+          # 2. 파일 전송 (dist 폴더, package.json, node_modules 포함)
           echo "${{ secrets.BASTION_SSH_KEY }}" > api-key.pem
           chmod 400 api-key.pem
 
-          # dist 폴더와 package.json 등 실행에 필요한 파일만 전송
+          # node_modules까지 같이 보내면 API 서버에서 따로 설치할 필요가 없어 인터넷이 안 돼도 됩니다!
           rsync -avz -e "ssh -i api-key.pem -o StrictHostKeyChecking=no" \
-            ./dist ./package.json ./pnpm-lock.yaml \
+            --exclude '.git' --exclude '.github' \
+            ./dist ./package.json ./node_modules \
             ec2-user@10.0.136.140:/var/www/api/
 
-          # 3. API 서버에서 프로세스 재시작 명령만 실행
+          # 3. API 서버에서 PM2 실행 (경로 문제 해결을 위해 전역 경로 사용 또는 alias 무시)
           ssh -i api-key.pem -o StrictHostKeyChecking=no ec2-user@10.0.136.140 "
-            cd /var/www/api && pnpm install --prod && pm2 restart all || pm2 start dist/main.js --name 'api-server'
+            cd /var/www/api &&
+            # pm2 경로를 직접 지정하거나, 환경변수를 강제로 로드합니다.
+            export PATH=\$PATH:/usr/local/bin:/home/ec2-user/.local/share/pnpm:/home/ec2-user/.npm-global/bin &&
+            pm2 reload api-server || pm2 start dist/main.js --name 'api-server'
           "
+
           rm -f api-key.pem
