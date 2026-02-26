@@ -29,12 +29,12 @@ jobs:
           echo "${{ secrets.BASTION_SSH_KEY }}" > api-key.pem
           chmod 400 api-key.pem
 
-          # 1. 빌드 수행 (에러를 유발하는 approve-builds 제거, 무시 옵션 활성화)
+          # 1. 빌드 수행
           pnpm config set ignore-scripts false
           pnpm install --no-frozen-lockfile
           pnpm run build
 
-          # 2. tar를 이용한 압축 (리눅스 표준, 폴더 구조 유지에 가장 탁월함)
+          # 2. tar 압축
           tar -czf deploy_package.tar.gz dist package.json node_modules
 
           # 3. 전송
@@ -46,18 +46,18 @@ jobs:
             sudo mkdir -p /var/www/api
             sudo chown ec2-user:ec2-user /var/www/api
             
-            # 내장된 tar 명령어로 압축 해제 (-C 옵션으로 /var/www/api 경로에 바로 풉니다)
             tar -xzf /home/ec2-user/deploy_package.tar.gz -C /var/www/api/
             
             cd /var/www/api &&
             node /home/ec2-user/pm2-bundle/bin/pm2 delete api-server || true &&
             
-            # 파일 확인 및 기동
-            if [ -f /var/www/api/dist/main.js ]; then
+            # 여기서 경로를 dist/src/main.js 로 수정했습니다!
+            if [ -f /var/www/api/dist/src/main.js ]; then
               echo '✅ main.js found! Starting server...';
-              node /home/ec2-user/pm2-bundle/bin/pm2 start /var/www/api/dist/main.js --name 'api-server'
+              node /home/ec2-user/pm2-bundle/bin/pm2 start /var/www/api/dist/src/main.js --name 'api-server'
             else
               echo '❌ Error: main.js not found!';
+              ls -R /var/www/api/dist;
               exit 1;
             fi
             
