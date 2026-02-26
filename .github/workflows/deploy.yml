@@ -24,26 +24,40 @@ jobs:
         with:
           version: 10
           run_install: false
-      - name: Deploy to API Server
+      - name: Build and Sync to API Server
         run: |
           echo "${{ secrets.BASTION_SSH_KEY }}" > api-key.pem
           chmod 400 api-key.pem
 
-          # 1. 빌드 및 전송 (./ 가 아닌 현재 폴더 내용물을 쏘도록 경로 주의)
+          # 1. 빌드 수행
           pnpm install && pnpm run build
-          rsync -avz -e "ssh -i api-key.pem -o StrictHostKeyChecking=no" \
-            --delete --exclude '.git' \
-            ./dist ./package.json ./node_modules \
-            ec2-user@10.0.136.140:/var/www/api/
 
-          # 2. API 서버에서 서버 기동
+          # 2. 필요한 파일들만 zip으로 압축 (dist, package.json, node_modules)
+          # -r: 하위 폴더 포함, -q: 로그 출력 최소화
+          zip -rq deploy_package.zip ./dist ./package.json ./node_modules
+
+          # 3. zip 파일 전송
+          scp -i api-key.pem -o StrictHostKeyChecking=no deploy_package.zip ec2-user@10.0.136.140:/home/ec2-user/
+
+          # 4. API 서버에서 압축 해제 및 서버 기동
           ssh -i api-key.pem -o StrictHostKeyChecking=no ec2-user@10.0.136.140 "
-            # 혹시 모를 경로 꼬임 방지를 위해 이동 후 실행
+            # 기존 폴더 내용 삭제 (깔끔한 배포를 위해)
+            sudo rm -rf /var/www/api/*
+            
+            # 압축 해제 (unzip이 설치되어 있어야 함)
+            unzip -q /home/ec2-user/deploy_package.zip -d /var/www/api/
+            
+            # 실행 권한 및 소유권 확인
+            sudo chown -R ec2-user:ec2-user /var/www/api/
+            
             cd /var/www/api &&
-            # 기존에 api-server라는 이름으로 돌던 게 있다면 지우기 (없어도 에러 안 나게 || true)
+            # PM2 실행
             node /home/ec2-user/pm2-bundle/bin/pm2 delete api-server || true &&
-            # 절대 경로를 사용하여 실행
             node /home/ec2-user/pm2-bundle/bin/pm2 start /var/www/api/dist/main.js --name 'api-server'
+            
+            # 전송된 zip 파일 삭제 (용량 관리)
+            rm /home/ec2-user/deploy_package.zip
           "
 
           rm -f api-key.pem
+          rm -f deploy_package.zip
