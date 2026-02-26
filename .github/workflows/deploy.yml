@@ -9,6 +9,21 @@ jobs:
   deploy:
     runs-on: self-hosted # 방금 만든 Bastion 러너 사용
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # Node.js 환경 세팅
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      # pnpm 설치 및 경로 설정
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+          run_install: false
       - name: Build and Sync to API Server
         run: |
           # 1. Bastion(러너)에서 빌드 수행
