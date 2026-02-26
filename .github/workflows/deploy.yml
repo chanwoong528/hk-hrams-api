@@ -29,9 +29,8 @@ jobs:
           echo "${{ secrets.BASTION_SSH_KEY }}" > api-key.pem
           chmod 400 api-key.pem
 
-          # 1. 빌드 및 전송
+          # 1. 빌드 및 전송 (./ 가 아닌 현재 폴더 내용물을 쏘도록 경로 주의)
           pnpm install && pnpm run build
-          # --delete 옵션을 추가하여 불필요한 옛날 파일을 정리합니다.
           rsync -avz -e "ssh -i api-key.pem -o StrictHostKeyChecking=no" \
             --delete --exclude '.git' \
             ./dist ./package.json ./node_modules \
@@ -39,9 +38,11 @@ jobs:
 
           # 2. API 서버에서 서버 기동
           ssh -i api-key.pem -o StrictHostKeyChecking=no ec2-user@10.0.136.140 "
+            # 혹시 모를 경로 꼬임 방지를 위해 이동 후 실행
             cd /var/www/api &&
-            # pm2가 프로세스를 못 찾으면(delete) 새로 시작(start)하도록 구성
+            # 기존에 api-server라는 이름으로 돌던 게 있다면 지우기 (없어도 에러 안 나게 || true)
             node /home/ec2-user/pm2-bundle/bin/pm2 delete api-server || true &&
+            # 절대 경로를 사용하여 실행
             node /home/ec2-user/pm2-bundle/bin/pm2 start /var/www/api/dist/main.js --name 'api-server'
           "
 
