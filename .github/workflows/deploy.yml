@@ -37,6 +37,7 @@ jobs:
           # 2. GitHub Secrets를 이용해 prd.env 파일 동적 생성
           cat << EOF > prd.env
           PORT=3000
+          NODE_ENV=production
           POSTGRES_DB=${{ secrets.POSTGRES_DB }}
           POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
