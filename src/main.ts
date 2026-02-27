@@ -24,7 +24,11 @@ async function bootstrap() {
 
   const port = configService.get<number>('PORT', 3000);
   app.enableCors({
-    origin: 'http://localhost:5173', // Allow requests only from this origin
+    origin: [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://d37sk82rnaj8jx.cloudfront.net',
+    ], // Allow requests only from this origin
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allowed HTTP methods
     credentials: true, // Allow sending of cookies and authorization headers
   });
