@@ -34,30 +34,40 @@ jobs:
           pnpm install --no-frozen-lockfile
           pnpm run build
 
-          # 2. tar 압축
-          tar -czf deploy_package.tar.gz dist package.json node_modules
+          # 2. GitHub Secrets를 이용해 prd.env 파일 동적 생성
+          cat << EOF > prd.env
+          PORT=3000
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_PORT_POOL=${{ secrets.POSTGRES_PORT_POOL }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          EOF
 
-          # 3. 전송
+          # 3. tar 압축 (생성한 prd.env 파일을 리스트에 추가!)
+          tar -czf deploy_package.tar.gz dist package.json node_modules prd.env
+
+          # 4. 전송
           scp -i api-key.pem -o StrictHostKeyChecking=no deploy_package.tar.gz ec2-user@10.0.136.140:/home/ec2-user/
 
-          # 4. API 서버에서 압축 해제 및 실행
+          # 5. API 서버에서 압축 해제 및 실행
           ssh -i api-key.pem -o StrictHostKeyChecking=no ec2-user@10.0.136.140 "
             sudo rm -rf /var/www/api/*
             sudo mkdir -p /var/www/api
             sudo chown ec2-user:ec2-user /var/www/api
             
+            # 압축 해제 시 prd.env도 /var/www/api/ 폴더에 풀립니다.
             tar -xzf /home/ec2-user/deploy_package.tar.gz -C /var/www/api/
             
             cd /var/www/api &&
             node /home/ec2-user/pm2-bundle/bin/pm2 delete api-server || true &&
             
-            # 여기서 경로를 dist/src/main.js 로 수정했습니다!
             if [ -f /var/www/api/dist/src/main.js ]; then
               echo '✅ main.js found! Starting server...';
               node /home/ec2-user/pm2-bundle/bin/pm2 start /var/www/api/dist/src/main.js --name 'api-server'
             else
               echo '❌ Error: main.js not found!';
-              ls -R /var/www/api/dist;
               exit 1;
             fi
             

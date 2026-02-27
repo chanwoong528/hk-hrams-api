@@ -19,7 +19,7 @@ import { LeaderReviewModule } from './leader-review/leader-review.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: 'env/dev.env',
+      envFilePath: ['prd.env', 'env/dev.env'],
     }),
     // JwtModule.registerAsync({
     //   imports: [ConfigModule],
@@ -56,8 +56,8 @@ import { LeaderReviewModule } from './leader-review/leader-review.module';
         ssl:
           configService.get<string>('NODE_ENV') === 'production'
             ? {
-                rejectUnauthorized: false,
-              }
+              rejectUnauthorized: false,
+            }
             : false,
       }),
     }),
@@ -74,4 +74,4 @@ import { LeaderReviewModule } from './leader-review/leader-review.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {} // Trigger Rebuild
+export class AppModule { } // Trigger Rebuild
