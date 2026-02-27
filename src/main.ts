@@ -3,6 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { SwaggerModule } from '@nestjs/swagger';
 import { BaseAPIDocument } from './swagger.document';
+import * as crypto from 'crypto';
+
+if (!globalThis.crypto) {
+  globalThis.crypto = crypto.webcrypto as any;
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
