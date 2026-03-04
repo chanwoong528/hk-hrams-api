@@ -27,7 +27,8 @@ async function bootstrap() {
     origin: [
       'http://localhost:5173',
       'http://localhost:3000',
-      'https://d37sk82rnaj8jx.cloudfront.net',
+      // 'https://d37sk82rnaj8jx.cloudfront.net',
+      'https://hr-dev.hankookilbo.com',
     ], // Allow requests only from this origin
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allowed HTTP methods
     credentials: true, // Allow sending of cookies and authorization headers
