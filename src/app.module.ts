@@ -14,6 +14,8 @@ import { DepartmentModule } from './department/department.module';
 import { HramsUserDepartmentModule } from './hrams-user-department/hrams-user-department.module';
 import { AuthModule } from './auth/auth.module';
 import { LeaderReviewModule } from './leader-review/leader-review.module';
+import { CompetencyQuestionModule } from './competency-question/competency-question.module';
+import { CompetencyAssessmentModule } from './competency-assessment/competency-assessment.module';
 
 @Module({
   imports: [
@@ -70,6 +72,8 @@ import { LeaderReviewModule } from './leader-review/leader-review.module';
     HramsUserDepartmentModule,
     AuthModule,
     LeaderReviewModule,
+    CompetencyQuestionModule,
+    CompetencyAssessmentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

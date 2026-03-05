@@ -12,6 +12,7 @@ import {
 } from 'typeorm';
 import { Goal } from 'src/goal/goal.entity';
 import { AppraisalBy } from 'src/appraisal-by/appraisal-by.entity';
+import { CompetencyAssessment } from 'src/competency-assessment/competency-assessment.entity';
 
 @Entity({
   name: 'appraisal_user',
@@ -53,6 +54,16 @@ export class AppraisalUser {
     onDelete: 'CASCADE',
   })
   goals: Goal[];
+
+  @OneToMany(
+    () => CompetencyAssessment,
+    (assessment) => assessment.appraisalUser,
+    {
+      cascade: true,
+      onDelete: 'CASCADE',
+    },
+  )
+  competencyAssessments: CompetencyAssessment[];
 
   //APPRAISAL ASSESSMENT >> CASCADE DELETE
   @OneToMany(() => AppraisalBy, (appraisalBy) => appraisalBy.appraisalUser, {
