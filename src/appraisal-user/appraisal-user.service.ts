@@ -98,7 +98,16 @@ export class AppraisalUserService {
         .leftJoinAndSelect('appraisalUser.appraisal', 'appraisal')
         .leftJoinAndSelect('owner.hramsUserDepartments', 'hramsUserDepartments')
         .leftJoinAndSelect('hramsUserDepartments.department', 'department')
-        .where('appraisal.appraisalId = :appraisalId', { appraisalId });
+        // Join for competency assessment progress (self-assessment only)
+        .leftJoin('appraisalUser.competencyAssessments', 'ca', 'ca.evaluatorId = owner.userId')
+        .addSelect('COUNT(ca.assessmentId)', 'competencyTotal')
+        .addSelect('COUNT(CASE WHEN ca.grade IS NOT NULL THEN 1 END)', 'competencySubmitted')
+        .where('appraisal.appraisalId = :appraisalId', { appraisalId })
+        .addGroupBy('appraisalUser.appraisalUserId')
+        .addGroupBy('owner.userId')
+        .addGroupBy('appraisal.appraisalId')
+        .addGroupBy('"hramsUserDepartments"."hramsUserDepartmentId"')
+        .addGroupBy('department.departmentId');
 
       if (keyword?.trim()) {
         // console.log('keyword', keyword);
@@ -113,15 +122,39 @@ export class AppraisalUserService {
 
       queryBuilder.skip((page - 1) * limit).take(limit);
 
-      const [appraisalUsers, total] = await queryBuilder.getManyAndCount();
+      // We use getRawAndEntities to retrieve raw aggregations alongside entities
+      const { entities, raw } = await queryBuilder.getRawAndEntities();
+
+      // Still need a separate count query since getRawAndEntities limits apply to the grouped result, but TypeORM's count() handles this poorly with groupBy.
+      // So we count without the grouping/joins that multiply rows just to get the distinct appraisalUser count.
+      const countQuery = this.appraisalUserRepository
+        .createQueryBuilder('appraisalUser')
+        .leftJoin('appraisalUser.owner', 'owner')
+        .where('appraisalUser.appraisalId = :appraisalId', { appraisalId });
+
+      if (keyword?.trim()) {
+        countQuery.andWhere('owner.koreanName LIKE :keyword', {
+          keyword: `%${keyword}%`,
+        });
+      }
+      const total = await countQuery.getCount();
 
       return {
-        list: appraisalUsers.map((appraisalUser) => ({
-          ...appraisalUser,
-          departments: appraisalUser.owner.hramsUserDepartments.map(
-            (hud) => hud.department,
-          ),
-        })),
+        list: entities.map((appraisalUser) => {
+          // Find matching raw result for this entity
+          const rawItem = raw.find((r) => r.appraisalUser_appraisalUserId === appraisalUser.appraisalUserId);
+          const compTotal = rawItem ? parseInt(rawItem.competencyTotal || '0', 10) : 0;
+          const compSubmitted = rawItem ? parseInt(rawItem.competencySubmitted || '0', 10) : 0;
+
+          return {
+            ...appraisalUser,
+            departments: appraisalUser.owner.hramsUserDepartments?.map(
+              (hud) => hud.department,
+            ) || [],
+            competencyTotal: compTotal,
+            competencySubmitted: compSubmitted,
+          };
+        }),
         total: total,
       };
     } catch (error: unknown) {

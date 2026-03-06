@@ -100,6 +100,18 @@ export class LeaderReviewService {
     assignment.status = 'SUBMITTED';
     await this.assignmentRepo.save(assignment);
 
+    // 3. Check if all assignments for this review are submitted
+    const allAssignments = await this.assignmentRepo.find({
+      where: { leaderReviewId: assignment.leaderReviewId }
+    });
+
+    const allSubmitted = allAssignments.every(a => a.status === 'SUBMITTED');
+
+    if (allSubmitted && assignment.leaderReview) {
+      assignment.leaderReview.status = 'COMPLETED';
+      await this.reviewRepo.save(assignment.leaderReview);
+    }
+
     return { message: 'Review submitted successfully' };
   }
 
@@ -248,6 +260,10 @@ export class LeaderReviewService {
           })
         );
         await this.assignmentRepo.save(assignments);
+      } else {
+        // Automatically mark as COMPLETED if no eligible reviewers
+        savedReview.status = 'COMPLETED';
+        await this.reviewRepo.save(savedReview);
       }
     }
 
@@ -262,19 +278,43 @@ export class LeaderReviewService {
   }
 
   async getAllReviews() {
-    return this.reviewRepo.find({
+    const reviews = await this.reviewRepo.find({
       relations: ['target', 'assignments', 'assignments.reviewer'],
       order: { createdAt: 'DESC' }
+    });
+
+    // Retroactive check for existing data
+    return reviews.map(review => {
+      if (review.status === 'IN_PROGRESS') {
+        const total = review.assignments?.length || 0;
+        const submitted = review.assignments?.filter(a => a.status === 'SUBMITTED').length || 0;
+        if (total === submitted) {
+          review.status = 'COMPLETED';
+        }
+      }
+      return review;
     });
   }
 
   // --- Result View (Target Leader) ---
 
   async getMyResultReviews(userId: string) {
-    return this.reviewRepo.find({
+    const reviews = await this.reviewRepo.find({
       where: { userId },
       relations: ['cycle', 'assignments'], // Assignments count needed?
       order: { createdAt: 'DESC' }
+    });
+
+    // Retroactive check for existing data
+    return reviews.map(review => {
+      if (review.status === 'IN_PROGRESS') {
+        const total = review.assignments?.length || 0;
+        const submitted = review.assignments?.filter(a => a.status === 'SUBMITTED').length || 0;
+        if (total === submitted) {
+          review.status = 'COMPLETED';
+        }
+      }
+      return review;
     });
   }
 
@@ -291,7 +331,6 @@ export class LeaderReviewService {
     });
 
     if (!review) throw new NotFoundException('Review not found');
-    if (review.userId !== userId) throw new NotFoundException('Unauthorized');
 
     // Stats
     const totalReviewers = review.assignments?.length || 0;

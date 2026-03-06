@@ -44,6 +44,13 @@ export class CompetencyQuestion {
   @JoinColumn({ name: 'createdBy' })
   creator: HramsUser;
 
+  @Column({ nullable: true })
+  lastModifiedBy: string;
+
+  @ManyToOne(() => HramsUser)
+  @JoinColumn({ name: 'lastModifiedBy' })
+  lastModifier: HramsUser;
+
   @CreateDateColumn()
   created: Date;
 

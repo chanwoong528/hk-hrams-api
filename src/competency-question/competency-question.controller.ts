@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get } from '@nestjs/common';
 import { CompetencyQuestionService } from './competency-question.service';
 import { CreateCompetencyQuestionsDto } from './dto/create-competency-questions.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
@@ -7,7 +7,7 @@ import { AuthGuard } from 'src/auth/auth.guard';
 export class CompetencyQuestionController {
   constructor(
     private readonly competencyQuestionService: CompetencyQuestionService,
-  ) {}
+  ) { }
 
   @Post('department')
   @UseGuards(AuthGuard)
@@ -21,5 +21,18 @@ export class CompetencyQuestionController {
       sub,
       createCompetencyQuestionsDto,
     );
+  }
+
+  @Get()
+  @UseGuards(AuthGuard)
+  async getCompetencyQuestions(@Request() request: Request) {
+    const { sub: userId } = (await request['user']) as { sub: string };
+    const result = await this.competencyQuestionService.getQuestions(userId);
+
+    return {
+      statusCode: 200,
+      message: 'Competency questions fetched successfully',
+      data: result,
+    };
   }
 }

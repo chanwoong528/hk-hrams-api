@@ -16,7 +16,7 @@ import { ApiTags } from '@nestjs/swagger';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post()
   async signIn(
@@ -52,6 +52,7 @@ export class AuthController {
     Response<{
       userId: string;
       email: string;
+      username: string;
       departments: {
         departmentId: string;
         departmentName: string;
@@ -59,24 +60,13 @@ export class AuthController {
       }[];
     }>
   > {
-    console.log('request>>> ', request['user']);
-    const userInfo = (await request['user']) as {
-      sub: string;
-      email: string;
-      departments: {
-        departmentId: string;
-        departmentName: string;
-        isLeader: boolean;
-      }[];
-    };
+    const payload = request['user'] as { sub: string };
+    const userInfo = await this.authService.getUserInfo(payload.sub);
+
     return {
       statusCode: 200,
       message: 'User info fetched successfully',
-      data: {
-        userId: userInfo.sub,
-        email: userInfo.email,
-        departments: userInfo.departments,
-      },
+      data: userInfo,
     };
   }
 }
