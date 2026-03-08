@@ -59,6 +59,8 @@ interface RawAppraisalRow {
   appraisalBy_updated: Date | null;
   owner_userId: string;
   owner_koreanName: string;
+  leaderCompetencyTotal: string;
+  leaderCompetencyCompleted: string;
   goals_goalId: string | null;
   goals_title: string | null;
   goals_description: string | null;
@@ -106,6 +108,8 @@ interface User {
     updated?: string;
   }[];
   koreanName: string;
+  leaderCompetencyTotal?: number;
+  leaderCompetencyCompleted?: number;
   goals: Goal[];
 }
 

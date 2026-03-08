@@ -12,6 +12,10 @@ export interface HramsUserWithDepartments extends HramsUser {
   departments: Department[];
 }
 
+export interface CreateBulkHramsUserPayload {
+  users: CreateHramsUserPayload[];
+}
+
 export interface UpdateHramsUserPayload {
   koreanName?: string;
   email?: string;

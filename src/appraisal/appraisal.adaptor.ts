@@ -46,6 +46,8 @@ export function formatAppraisalNested(
           selfAssessment: undefined, // Initialize
           assessments: [], // Initialize
           koreanName: row.owner_koreanName,
+          leaderCompetencyTotal: parseInt(row.leaderCompetencyTotal || '0', 10),
+          leaderCompetencyCompleted: parseInt(row.leaderCompetencyCompleted || '0', 10),
           goals: [],
         };
         appraisalObj.user.push(userObj);

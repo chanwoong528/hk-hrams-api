@@ -1,4 +1,5 @@
 import { AppraisalUser } from 'src/appraisal-user/appraisal-user.entity';
+import { CompetencyQuestion } from 'src/competency-question/competency-question.entity';
 import {
   Column,
   CreateDateColumn,
@@ -39,7 +40,6 @@ export class Appraisal {
   @Column({ nullable: true })
   createdBy: string;
 
-
   @CreateDateColumn()
   created: Date;
 
@@ -51,6 +51,11 @@ export class Appraisal {
     onDelete: 'CASCADE',
   })
   appraisalUsers: AppraisalUser[];
+
+  @OneToMany(() => CompetencyQuestion, (question) => question.appraisal, {
+    cascade: true,
+  })
+  competencyQuestions: CompetencyQuestion[];
 
   // //GOAL >> CASCADE DELETE
   // @OneToMany(() => Goal, (goal) => goal.appraisal, {

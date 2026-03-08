@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Like, QueryFailedError, Repository } from 'typeorm';
+import { DataSource, In, Like, QueryFailedError, Repository } from 'typeorm';
 
 import { HramsUser } from './hrams-user.entity';
 import {
@@ -10,6 +10,7 @@ import {
 } from './hrams-user.dto';
 import { CustomException } from 'src/common/exceptions/custom-exception';
 import { HramsUserDepartmentService } from 'src/hrams-user-department/hrams-user-department.service';
+import { Department } from 'src/department/department.entity';
 
 import userDemoData from '../../mock/hrams_users_300.json';
 import { generateHashPassword } from 'src/common/utils/hash';
@@ -22,7 +23,8 @@ export class HramsUserService {
     @InjectRepository(HramsUser)
     private readonly hrUserRepository: Repository<HramsUser>,
     private readonly hramsUserDepartmentService: HramsUserDepartmentService,
-  ) {}
+    private readonly dataSource: DataSource,
+  ) { }
 
   async getAllHramsUsersByKeyword(keyword: string): Promise<{
     list: HramsUserWithDepartments[];
@@ -71,17 +73,53 @@ export class HramsUserService {
   async getAllHramsUsersByPagination(
     page: number,
     limit: number,
+    keyword?: string,
+    departmentId?: string,
   ): Promise<{
     list: HramsUserWithDepartments[];
     total: number;
   }> {
     try {
-      const [hrUsers, total] = await this.hrUserRepository.findAndCount({
-        skip: (page - 1) * limit,
-        take: limit,
-        relations: ['hramsUserDepartments', 'hramsUserDepartments.department'],
-        order: { created: 'DESC' },
-      });
+      const qb = this.hrUserRepository
+        .createQueryBuilder('user')
+        .leftJoinAndSelect('user.hramsUserDepartments', 'hud')
+        .leftJoinAndSelect('hud.department', 'department')
+        .orderBy('user.created', 'DESC');
+
+      if (keyword?.trim()) {
+        qb.andWhere(
+          '(user.koreanName LIKE :keyword OR user.email LIKE :keyword)',
+          { keyword: `%${keyword}%` },
+        );
+      }
+
+      if (departmentId?.trim()) {
+        // Use recursive CTE to find selected department + all descendants
+        const descendantRows = await this.dataSource.query(
+          `WITH RECURSIVE dept_tree AS (
+             SELECT "departmentId" FROM department WHERE "departmentId" = $1
+             UNION ALL
+             SELECT d."departmentId" FROM department d
+             INNER JOIN dept_tree dt ON d."parentDepartmentId" = dt."departmentId"
+           )
+           SELECT "departmentId" FROM dept_tree`,
+          [departmentId],
+        );
+
+        const allDeptIds = descendantRows.map(
+          (r: any) => r.departmentId,
+        );
+
+        if (allDeptIds.length > 0) {
+          qb.andWhere('hud.departmentId IN (:...allDeptIds)', { allDeptIds });
+        } else {
+          qb.andWhere('hud.departmentId = :departmentId', { departmentId });
+        }
+      }
+
+      qb.skip((page - 1) * limit).take(limit);
+
+      const [hrUsers, total] = await qb.getManyAndCount();
       const list = hrUsers.map((hrUser) => ({
         userId: hrUser.userId,
         koreanName: hrUser.koreanName,
@@ -180,9 +218,9 @@ export class HramsUserService {
       // Dedup users just in case they are leaders of multiple departments
       const leadersMap = new Map<string, HramsUser>();
       hramsUserDepartments.forEach(hud => {
-         if (hud.user) {
-            leadersMap.set(hud.user.userId, hud.user);
-         }
+        if (hud.user) {
+          leadersMap.set(hud.user.userId, hud.user);
+        }
       });
       return Array.from(leadersMap.values());
     } catch (error: unknown) {
@@ -193,30 +231,30 @@ export class HramsUserService {
 
   async getTeamMembersOfLeader(leaderId: string): Promise<HramsUser[]> {
     try {
-        // 1. Find departments where this user is a leader
-        const leaderDepts = await this.hramsUserDepartmentService.getHramsUserDepartmentsByUserId(leaderId);
-        const leadingDeptIds = leaderDepts
-            .filter(hud => hud.isLeader)
-            .map(hud => hud.departmentId);
+      // 1. Find departments where this user is a leader
+      const leaderDepts = await this.hramsUserDepartmentService.getHramsUserDepartmentsByUserId(leaderId);
+      const leadingDeptIds = leaderDepts
+        .filter(hud => hud.isLeader)
+        .map(hud => hud.departmentId);
 
-        if (leadingDeptIds.length === 0) return [];
+      if (leadingDeptIds.length === 0) return [];
 
-        // 2. Find all users in these departments
-        const membersMap = new Map<string, HramsUser>();
-        
-        await Promise.all(leadingDeptIds.map(async (deptId) => {
-            const members = await this.hramsUserDepartmentService.getHramsUsersByDepartmentId(deptId);
-            members.forEach(m => {
-                if (m.userId !== leaderId) { // Exclude the leader themselves
-                    membersMap.set(m.userId, m);
-                }
-            });
-        }));
+      // 2. Find all users in these departments
+      const membersMap = new Map<string, HramsUser>();
 
-        return Array.from(membersMap.values());
+      await Promise.all(leadingDeptIds.map(async (deptId) => {
+        const members = await this.hramsUserDepartmentService.getHramsUsersByDepartmentId(deptId);
+        members.forEach(m => {
+          if (m.userId !== leaderId) { // Exclude the leader themselves
+            membersMap.set(m.userId, m);
+          }
+        });
+      }));
+
+      return Array.from(membersMap.values());
     } catch (error: unknown) {
-        this.customException.handleException(error as QueryFailedError | Error);
-        return [];
+      this.customException.handleException(error as QueryFailedError | Error);
+      return [];
     }
   }
 
@@ -251,6 +289,18 @@ export class HramsUserService {
       this.customException.handleException(error as QueryFailedError | Error);
     }
   }
+
+  async createBulkHramsUsers(
+    payloads: CreateHramsUserPayload[],
+  ): Promise<HramsUser[]> {
+    const results: HramsUser[] = [];
+    for (const payload of payloads) {
+      const user = await this.createHramsUser(payload);
+      results.push(user);
+    }
+    return results;
+  }
+
   //DEMO DATA Area
 
   async createDemoBulkHramsUsers(): Promise<HramsUser[]> {

@@ -33,7 +33,7 @@ export class AppraisalService {
   ): Promise<FormattedAppraisalResponse> {
 
     // 1. Get all descendants for each leader-department
-    const allDepartmentIds = new Set<string>();
+    const allDepartmentIds = new Set<string>(departmentIds);
 
     for (const deptId of departmentIds) {
       const descendants = await this.departmentService.getDescendants(deptId);
@@ -63,6 +63,7 @@ export class AppraisalService {
         departmentIds: departmentIds
       })
       .andWhere('owner.userId != :userId', { userId })
+      .leftJoin('appraisalUser.competencyAssessments', 'ca_leader', 'ca_leader.evaluatorId = :userId', { userId })
       .leftJoinAndSelect('appraisalUser.goals', 'goals')
       .leftJoinAndSelect('goals.goalAssessmentBy', 'goalAssessmentBy')
       .leftJoinAndSelect('goalAssessmentBy.gradedByUser', 'gradedByUser')
@@ -82,6 +83,8 @@ export class AppraisalService {
         'appraisalUser.status',
         'owner.userId',
         'owner.koreanName',
+        'COUNT(ca_leader.assessmentId) OVER(PARTITION BY appraisalUser.appraisalUserId) AS leaderCompetencyTotal',
+        'COUNT(CASE WHEN ca_leader.grade IS NOT NULL THEN 1 END) OVER(PARTITION BY appraisalUser.appraisalUserId) AS leaderCompetencyCompleted',
         'goals.goalId',
         'goals.title',
         'goals.description',

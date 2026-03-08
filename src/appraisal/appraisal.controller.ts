@@ -87,7 +87,16 @@ export class AppraisalController {
     @Request() request: Request,
   ): Promise<Response<FormattedAppraisalResponse>> {
     const { sub } = (await request['user']) as { sub: string };
-    const ids = departments.split(',');
+    const ids = departments ? departments.split(',').filter(id => id.trim() !== '') : [];
+
+    if (ids.length === 0) {
+      return {
+        statusCode: 200,
+        message: 'No departments provided',
+        data: [],
+      };
+    }
+
     const data = await this.appraisalService.getAppraisalTeamMembers(ids, sub);
 
     console.log('data>>> ', data);

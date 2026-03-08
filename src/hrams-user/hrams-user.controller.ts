@@ -13,6 +13,7 @@ import { HramsUser } from './hrams-user.entity';
 import { Response } from 'src/common/api-reponse/response-type';
 import {
   CreateHramsUserPayload,
+  CreateBulkHramsUserPayload,
   HramsUserWithDepartments,
   UpdateHramsUserPayload,
 } from './hrams-user.dto';
@@ -22,7 +23,7 @@ import { AuthGuard } from 'src/auth/auth.guard';
 @Controller('user')
 export class HramsUserController {
   private readonly customException = new CustomException('HramsUser');
-  constructor(private readonly hrUserService: HramsUserService) {}
+  constructor(private readonly hrUserService: HramsUserService) { }
 
   @Get()
   @UseGuards(AuthGuard)
@@ -30,25 +31,19 @@ export class HramsUserController {
     @Query('keyword') keyword: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Query('departmentId') departmentId?: string,
   ): Promise<Response<{ list: HramsUserWithDepartments[]; total: number }>> {
-    if (!keyword) {
-      const data = await this.hrUserService.getAllHramsUsersByPagination(
-        page,
-        limit,
-      );
+    const data = await this.hrUserService.getAllHramsUsersByPagination(
+      page,
+      limit,
+      keyword,
+      departmentId,
+    );
 
-      return {
-        statusCode: 200,
-        message: 'Hrams users fetched by pagination successfully',
-        data: data,
-      };
-    }
-
-    const data = await this.hrUserService.getAllHramsUsersByKeyword(keyword);
     return {
       statusCode: 200,
-      message: `Hrams users fetched by keyword successfully keywrod: ${keyword}`,
-      data,
+      message: 'Hrams users fetched successfully',
+      data: data,
     };
   }
 
@@ -74,6 +69,20 @@ export class HramsUserController {
     return {
       statusCode: 201,
       message: 'Hrams user created successfully',
+      data,
+    };
+  }
+
+  @Post('bulk')
+  async createBulkHramsUsers(
+    @Body() createBulkPayload: CreateBulkHramsUserPayload,
+  ): Promise<Response<HramsUser[]>> {
+    const data = await this.hrUserService.createBulkHramsUsers(
+      createBulkPayload.users,
+    );
+    return {
+      statusCode: 201,
+      message: 'Bulk hrams users created successfully',
       data,
     };
   }
