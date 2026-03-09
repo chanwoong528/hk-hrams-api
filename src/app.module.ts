@@ -16,6 +16,8 @@ import { AuthModule } from './auth/auth.module';
 import { LeaderReviewModule } from './leader-review/leader-review.module';
 import { CompetencyQuestionModule } from './competency-question/competency-question.module';
 import { CompetencyAssessmentModule } from './competency-assessment/competency-assessment.module';
+import { TodoModule } from './todo/todo.module';
+import { EvaluationReportModule } from './evaluation-report/evaluation-report.module';
 
 @Module({
   imports: [
@@ -74,6 +76,8 @@ import { CompetencyAssessmentModule } from './competency-assessment/competency-a
     LeaderReviewModule,
     CompetencyQuestionModule,
     CompetencyAssessmentModule,
+    TodoModule,
+    EvaluationReportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

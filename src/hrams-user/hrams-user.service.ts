@@ -111,9 +111,23 @@ export class HramsUserService {
         );
 
         if (allDeptIds.length > 0) {
-          qb.andWhere('hud.departmentId IN (:...allDeptIds)', { allDeptIds });
+          qb.andWhere(
+            `EXISTS (
+              SELECT 1 FROM hrams_user_department hud_filter 
+              WHERE hud_filter."userId" = "user"."userId" 
+              AND hud_filter."departmentId" IN (:...allDeptIds)
+            )`,
+            { allDeptIds },
+          );
         } else {
-          qb.andWhere('hud.departmentId = :departmentId', { departmentId });
+          qb.andWhere(
+            `EXISTS (
+              SELECT 1 FROM hrams_user_department hud_filter 
+              WHERE hud_filter."userId" = "user"."userId" 
+              AND hud_filter."departmentId" = :departmentId
+            )`,
+            { departmentId },
+          );
         }
       }
 

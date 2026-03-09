@@ -18,7 +18,7 @@ export class HramsUserDepartmentService {
   constructor(
     @InjectRepository(HramsUserDepartment)
     private readonly hramsUserDepartmentRepository: Repository<HramsUserDepartment>,
-  ) {}
+  ) { }
 
   async upsertHramsUserDepartment(
     createHramsUserDepartmentPayload: CreateHramsUserDepartmentPayload,
@@ -91,13 +91,13 @@ export class HramsUserDepartmentService {
     }
     return hramsUserDepartment.isLeader;
   }
-  async getHramsUserDepartmentByDepartmentId(
+  async getDepartmentLeader(
     departmentId: string,
   ): Promise<HramsUserDepartment> {
     try {
       const hramsUserDepartment =
         await this.hramsUserDepartmentRepository.findOne({
-          where: { departmentId },
+          where: { departmentId, isLeader: true },
         });
       return hramsUserDepartment;
     } catch (error: unknown) {

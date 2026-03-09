@@ -30,7 +30,7 @@ export class DepartmentService {
     private readonly departmentRepository: TreeRepository<Department>,
     private readonly hrUserService: HramsUserService,
     private readonly hramsUserDepartmentService: HramsUserDepartmentService,
-  ) {}
+  ) { }
 
   private recursiveDepartment(departments: Department[]): Department[] {
     return departments.map((department) => {
@@ -173,23 +173,24 @@ export class DepartmentService {
         const leader = await this.hrUserService.getHramsUserById(
           updateDepartmentPayload.leaderId,
         );
-        const hramsUserDepartment =
-          await this.hramsUserDepartmentService.getHramsUserDepartmentByDepartmentId(
+        const currentLeaderRecord =
+          await this.hramsUserDepartmentService.getDepartmentLeader(
             department.departmentId,
           );
-        if (hramsUserDepartment) {
+
+        if (currentLeaderRecord && currentLeaderRecord.userId !== leader.userId) {
           await this.hramsUserDepartmentService.updateHramsUserDepartmentById({
-            hramsUserDepartmentId: hramsUserDepartment.hramsUserDepartmentId,
-            userId: leader.userId,
-            isLeader: true,
-          });
-        } else {
-          await this.hramsUserDepartmentService.upsertHramsUserDepartment({
-            userId: leader.userId,
-            departmentId: department.departmentId,
-            isLeader: true,
+            hramsUserDepartmentId: currentLeaderRecord.hramsUserDepartmentId,
+            userId: currentLeaderRecord.userId,
+            isLeader: false,
           });
         }
+
+        await this.hramsUserDepartmentService.upsertHramsUserDepartment({
+          userId: leader.userId,
+          departmentId: department.departmentId,
+          isLeader: true,
+        });
       }
 
       return await treeRepository.save(department);
