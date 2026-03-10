@@ -28,6 +28,9 @@ export class Department {
   @UpdateDateColumn()
   updated: Date;
 
+  @Column({ type: 'int', default: 0 })
+  rank: number;
+
   @TreeParent()
   @JoinColumn()
   parent?: Department | null;

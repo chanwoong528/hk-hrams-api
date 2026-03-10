@@ -121,6 +121,7 @@ export class AuthService {
       departmentId: string;
       departmentName: string;
       isLeader: boolean;
+      rank?: number;
     }[];
   }> {
     try {
@@ -136,6 +137,7 @@ export class AuthService {
           departmentId: department.departmentId,
           departmentName: department.department.departmentName,
           isLeader: department.isLeader,
+          ...(department.isLeader ? { rank: department.department.rank } : {}),
         })),
       };
     } catch (error) {

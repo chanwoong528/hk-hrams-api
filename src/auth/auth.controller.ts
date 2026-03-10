@@ -57,6 +57,7 @@ export class AuthController {
         departmentId: string;
         departmentName: string;
         isLeader: boolean;
+        rank?: number;
       }[];
     }>
   > {

@@ -46,6 +46,12 @@ export class Appraisal {
   @UpdateDateColumn()
   updated: Date;
 
+  @Column({ nullable: true })
+  minGradeRank: number;
+
+  @Column({ nullable: true })
+  maxGradeRank: number;
+
   @OneToMany(() => AppraisalUser, (appraisalUser) => appraisalUser.appraisal, {
     cascade: true,
     onDelete: 'CASCADE',

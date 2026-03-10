@@ -106,6 +106,7 @@ export class DepartmentService {
 
       const department = this.departmentRepository.create({
         departmentName: createDepartmentPayload.departmentName,
+        rank: createDepartmentPayload.rank ?? 0,
       });
 
       // If parent is provided, set the parent relationship
@@ -154,6 +155,10 @@ export class DepartmentService {
       // Update basic fields
       if (updateDepartmentPayload.departmentName) {
         department.departmentName = updateDepartmentPayload.departmentName;
+      }
+
+      if (updateDepartmentPayload.rank !== undefined) {
+        department.rank = updateDepartmentPayload.rank;
       }
 
       if (updateDepartmentPayload.parentId) {

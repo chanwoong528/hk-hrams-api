@@ -2,12 +2,14 @@ export interface CreateDepartmentPayload {
   departmentName: string;
   parentId?: string; // Changed from parentDepartmentId
   leaderId?: string;
+  rank?: number;
 }
 
 export interface UpdateDepartmentPayload {
   departmentName?: string;
   parentId?: string; // Changed from parentDepartmentId
   leaderId?: string;
+  rank?: number;
 }
 export interface UpdateManyDepartmentsPayload {
   departmentId: string;
@@ -18,6 +20,7 @@ export interface UpdateManyDepartmentsPayload {
 export interface DepartmentTreeResponse {
   departmentId: string;
   departmentName: string;
+  rank: number;
   parentId?: string; // Changed from parentDepartmentId
   leaderId?: string;
   leader?: {

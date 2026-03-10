@@ -32,10 +32,27 @@ export class AppraisalService {
     userId: string,
   ): Promise<FormattedAppraisalResponse> {
 
-    // 1. Get all descendants for each leader-department
-    const allDepartmentIds = new Set<string>(departmentIds);
+    // 0. Verify if User is HR or Admin (grant global access)
+    let finalDepartmentIds = [...departmentIds];
+    const user = await this.hramsUserService.getHramsUserById(userId);
 
-    for (const deptId of departmentIds) {
+    // Check if user is an admin or part of HR
+    const isAdminOrHr =
+      user?.email === 'mooncw@hankookilbo.com' ||
+      user?.hramsUserDepartments?.some((hud) =>
+        hud.department?.departmentName?.toLowerCase() === 'hr' ||
+        hud.department?.departmentName === '인사팀'
+      );
+
+    if (isAdminOrHr) {
+      const allDepts = await this.departmentService.getAllDepartmentsFlat();
+      finalDepartmentIds = allDepts.map(d => d.departmentId);
+    }
+
+    // 1. Get all descendants for each leader-department
+    const allDepartmentIds = new Set<string>(finalDepartmentIds);
+
+    for (const deptId of finalDepartmentIds) {
       const descendants = await this.departmentService.getDescendants(deptId);
       descendants.forEach(d => allDepartmentIds.add(d.departmentId));
     }
@@ -63,7 +80,6 @@ export class AppraisalService {
         departmentIds: departmentIds
       })
       .andWhere('owner.userId != :userId', { userId })
-      .leftJoin('appraisalUser.competencyAssessments', 'ca_leader', 'ca_leader.evaluatorId = :userId', { userId })
       .leftJoinAndSelect('appraisalUser.goals', 'goals')
       .leftJoinAndSelect('goals.goalAssessmentBy', 'goalAssessmentBy')
       .leftJoinAndSelect('goalAssessmentBy.gradedByUser', 'gradedByUser')
@@ -83,8 +99,6 @@ export class AppraisalService {
         'appraisalUser.status',
         'owner.userId',
         'owner.koreanName',
-        'COUNT(ca_leader.assessmentId) OVER(PARTITION BY appraisalUser.appraisalUserId) AS leaderCompetencyTotal',
-        'COUNT(CASE WHEN ca_leader.grade IS NOT NULL THEN 1 END) OVER(PARTITION BY appraisalUser.appraisalUserId) AS leaderCompetencyCompleted',
         'goals.goalId',
         'goals.title',
         'goals.description',
@@ -105,6 +119,38 @@ export class AppraisalService {
         'appraisalBy.assessedById',
         'appraisalBy.updated', // Added updated column
       ])
+      .addSelect((subQuery) => {
+        return subQuery
+          .select('COUNT(ca.assessmentId)', 'total')
+          .from('competency_assessment', 'ca')
+          .where('ca.appraisalUserId = appraisalUser.appraisalUserId')
+          .andWhere('ca.evaluatorId = owner.userId');
+      }, 'selfCompetencyTotal')
+      .addSelect((subQuery) => {
+        return subQuery
+          .select('COUNT(ca.assessmentId)', 'completed')
+          .from('competency_assessment', 'ca')
+          .where('ca.appraisalUserId = appraisalUser.appraisalUserId')
+          .andWhere('ca.evaluatorId = owner.userId')
+          .andWhere('ca.grade IS NOT NULL');
+      }, 'selfCompetencyCompleted')
+      .addSelect((subQuery) => {
+        return subQuery
+          .select('COUNT(ca.assessmentId)', 'total')
+          .from('competency_assessment', 'ca')
+          .where('ca.appraisalUserId = appraisalUser.appraisalUserId')
+          .andWhere('ca.evaluatorId != owner.userId')
+          .andWhere('ca.evaluatorId = :userId', { userId });
+      }, 'myCompetencyTotal')
+      .addSelect((subQuery) => {
+        return subQuery
+          .select('COUNT(ca.assessmentId)', 'completed')
+          .from('competency_assessment', 'ca')
+          .where('ca.appraisalUserId = appraisalUser.appraisalUserId')
+          .andWhere('ca.evaluatorId != owner.userId')
+          .andWhere('ca.evaluatorId = :userId', { userId })
+          .andWhere('ca.grade IS NOT NULL');
+      }, 'myCompetencyCompleted')
       .getRawMany();
 
     return formatAppraisalNested(appraisal);
@@ -301,6 +347,8 @@ export class AppraisalService {
         description: createAppraisalPayload.description,
         endDate: createAppraisalPayload.endDate,
         createdBy: userId,
+        minGradeRank: createAppraisalPayload.minGradeRank,
+        maxGradeRank: createAppraisalPayload.maxGradeRank,
       });
 
       const result = await this.appraisalRepository.save(appraisal);
