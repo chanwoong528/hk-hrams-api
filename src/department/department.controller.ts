@@ -16,11 +16,17 @@ import {
   UpdateDepartmentPayload,
 } from './department.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
 
+@ApiTags('부서 (Department)')
+@ApiBearerAuth('access-token')
 @Controller('department')
 export class DepartmentController {
   constructor(private readonly departmentService: DepartmentService) {}
 
+  @ApiOperation({ summary: '부서 목록 조회', description: '전체 부서 목록을 조회합니다 (트리형 또는 평면형).' })
+  @ApiQuery({ name: 'viewType', required: false, enum: ['flat', 'tree'], description: '응답 형태 (기본값: tree)' })
+  @ApiResponse({ status: 200, description: '부서 목록 조회 성공' })
   @Get()
   @UseGuards(AuthGuard)
   async getAllDepartments(
@@ -37,6 +43,8 @@ export class DepartmentController {
     };
   }
 
+  @ApiOperation({ summary: '부서 생성', description: '새로운 부서를 생성합니다.' })
+  @ApiResponse({ status: 201, description: '부서 생성 성공' })
   @Post()
   async createDepartment(
     @Body() createDepartmentPayload: CreateDepartmentPayload,
@@ -51,6 +59,9 @@ export class DepartmentController {
     };
   }
 
+  @ApiOperation({ summary: '부서 정보 수정', description: '특정 부서의 정보를 수정합니다.' })
+  @ApiParam({ name: 'id', description: '수정할 부서 ID' })
+  @ApiResponse({ status: 200, description: '부서 수정 성공' })
   @Patch(':id')
   async updateDepartment(
     @Param('id') id: string,

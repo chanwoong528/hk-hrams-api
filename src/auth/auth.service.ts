@@ -6,8 +6,13 @@ import { HramsUserDepartmentService } from 'src/hrams-user-department/hrams-user
 import { comparePassword } from 'src/common/utils/hash';
 // import { HramsUserDepartment } from 'src/hrams-user-department/hrams-user-department.entity';
 
-export interface SignInDto {
+import { ApiProperty } from '@nestjs/swagger';
+
+export class SignInDto {
+  @ApiProperty({ description: '사용자 이메일', example: 'user@hankookilbo.com' })
   email: string;
+
+  @ApiProperty({ description: '비밀번호', example: 'password123!' })
   pw: string;
 }
 

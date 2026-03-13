@@ -18,28 +18,18 @@ import {
 import { GoalService } from './goal.service';
 import { Goal } from './goal.entity';
 import { Response } from 'src/common/api-reponse/response-type';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
-@ApiTags('Goal')
+
+@ApiTags('목표 (Goal)')
+@ApiBearerAuth('access-token')
 @Controller()
 export class GoalController {
   constructor(private readonly goalService: GoalService) { }
 
-  @ApiOperation({ summary: 'Create a new goal' })
-  @ApiResponse({ status: 400, description: 'Bad Request' })
-  @ApiResponse({ status: 201, description: 'Goal created successfully' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        appraisalId: {
-          type: 'string',
-          example: '123e4567-e89b-12d3-a456-426614174000',
-        },
-        description: { type: 'string' },
-      },
-    },
-  })
+  @ApiOperation({ summary: '개인 목표 생성', description: '로그인한 사용자의 개인 목표를 생성합니다.' })
+  @ApiResponse({ status: 201, description: '목표 생성 성공' })
+  @ApiResponse({ status: 400, description: '잘못된 요청' })
   @Post('goal')
   @UseGuards(AuthGuard)
   async createGoal(
@@ -55,6 +45,9 @@ export class GoalController {
       data,
     };
   }
+
+  @ApiOperation({ summary: '공통 목표 생성', description: '리더 사용자가 특정 부서 인원들을 위한 공통 목표를 생성합니다.' })
+  @ApiResponse({ status: 201, description: '공통 목표 생성 성공' })
   @Post('common-goal')
   @UseGuards(AuthGuard)
   async createCommonGoal(
@@ -75,14 +68,10 @@ export class GoalController {
       message: 'Common goal created successfully',
       data: data,
     };
-
-    // return {
-    //   statusCode: 201,
-    //   message: 'Common goal created successfully',
-    //   data,
-    // };
   }
 
+  @ApiOperation({ summary: '공통 목표 수정', description: '리더 사용자가 특정 부서의 공통 목표를 수정합니다.' })
+  @ApiResponse({ status: 200, description: '공통 목표 수정 성공' })
   @Patch('common-goal')
   @UseGuards(AuthGuard)
   async updateCommonGoal(
@@ -103,6 +92,8 @@ export class GoalController {
     };
   }
 
+  @ApiOperation({ summary: '공통 목표 삭제', description: '리더 사용자가 특정 부서의 공통 목표를 삭제합니다.' })
+  @ApiResponse({ status: 200, description: '공통 목표 삭제 성공' })
   @Delete('common-goal')
   @UseGuards(AuthGuard)
   async deleteCommonGoalByLeader(
@@ -118,6 +109,8 @@ export class GoalController {
     };
   }
 
+  @ApiOperation({ summary: '전체 목표 목록 조회', description: '시스템에 등록된 모든 목표 항목을 조회합니다.' })
+  @ApiResponse({ status: 200, description: '전체 목표 조회 성공' })
   @Get('goal')
   @UseGuards(AuthGuard)
   async getAllGoals(@Request() request: Request): Promise<Response<Goal[]>> {
@@ -130,7 +123,12 @@ export class GoalController {
       data,
     };
   }
-  @Get('goal/:goalId') async getGoalById(
+
+  @ApiOperation({ summary: '단일 목표 조회', description: '특정 ID의 목표 상세 정보를 조회합니다.' })
+  @ApiParam({ name: 'goalId', description: '조회할 목표 ID' })
+  @ApiResponse({ status: 200, description: '단일 목표 조회 성공' })
+  @Get('goal/:goalId') 
+  async getGoalById(
     @Param('goalId') id: string,
   ): Promise<Response<Goal>> {
     const data = await this.goalService.getGoal(id);
@@ -141,6 +139,9 @@ export class GoalController {
     };
   }
 
+  @ApiOperation({ summary: '평가별 내 목표 조회', description: '특정 평가 ID에 속한 로그인 사용자의 목표 목록을 조회합니다.' })
+  @ApiParam({ name: 'appraisalId', description: '조회할 평가 ID' })
+  @ApiResponse({ status: 200, description: '평가별 목표 조회 성공' })
   @Get('goal/appraisal/:appraisalId')
   @UseGuards(AuthGuard)
   async getGoalByUserIdAndAppraisalId(
@@ -158,6 +159,11 @@ export class GoalController {
       data,
     };
   }
+
+  @ApiOperation({ summary: '목표 수정', description: '기존 목표의 제목과 설명을 수정합니다.' })
+  @ApiParam({ name: 'goalId', description: '수정할 목표 ID' })
+  @ApiBody({ schema: { type: 'object', properties: { title: { type: 'string' }, description: { type: 'string' } } } })
+  @ApiResponse({ status: 200, description: '목표 수정 성공' })
   @Patch('goal/:goalId')
   @UseGuards(AuthGuard)
   async updateGoal(
@@ -174,6 +180,9 @@ export class GoalController {
     };
   }
 
+  @ApiOperation({ summary: '목표 삭제', description: '특정 목표를 삭제합니다.' })
+  @ApiParam({ name: 'goalId', description: '삭제할 목표 ID' })
+  @ApiResponse({ status: 200, description: '목표 삭제 성공' })
   @Delete('goal/:goalId')
   @UseGuards(AuthGuard)
   async deleteGoal(
