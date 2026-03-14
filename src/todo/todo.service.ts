@@ -21,8 +21,15 @@ export class TodoService {
     ) { }
 
     async getMyTodos(userId: string) {
+        const myLeaderDeps = await this.hramsUserDepartmentService.getHramsUserDepartmentsByUserId(userId);
+        const leaderDeptIds = myLeaderDeps.filter(d => d.isLeader).map(d => d.department.departmentId);
+        const myRank = myLeaderDeps.reduce((min, d) => Math.min(min, d.department?.rank ?? 99), 99);
+
+        // Check if user is HR/Admin (Special case)
+        const isAdmin = myLeaderDeps.some(ud => ud.department?.departmentName.toLowerCase() === 'hr' || ud.department?.departmentName === '인사팀') || userId === 'some-admin-id-if-needed';
+
         // 1. My Competency & Goal Self-Assessments (AppraisalUser where owner is me, and appraisal is ongoing)
-        const myAppraisalsUsers = await this.appraisalUserRepo
+        const myAppraisalsUsersQuery = this.appraisalUserRepo
             .createQueryBuilder('au')
             .innerJoinAndSelect('au.appraisal', 'appraisal')
             .innerJoin('au.owner', 'owner')
@@ -31,7 +38,9 @@ export class TodoService {
             .leftJoin('au.goals', 'goals')
             .leftJoin('goals.goalAssessmentBy', 'ga_self', 'ga_self.gradedBy = :userId AND ga_self.goalId = goals."goalId"', { userId })
             .where('owner.userId = :userId', { userId })
-            .andWhere('appraisal.status = :ongoing', { ongoing: 'ongoing' })
+            .andWhere('appraisal.status = :ongoing', { ongoing: 'ongoing' });
+
+        const myAppraisalsUsersResult = await myAppraisalsUsersQuery
             .addSelect('COUNT(DISTINCT cq."competencyId")', 'cqTotal')
             .addSelect('COUNT(DISTINCT CASE WHEN ca_self.grade IS NOT NULL AND ca_self.grade != \'\' THEN ca_self.assessmentId END)', 'competencyCompleted')
             .addSelect('COUNT(DISTINCT goals."goalId")', 'goalTotal')
@@ -43,18 +52,14 @@ export class TodoService {
         const selfCompetencyTodos = [];
         const selfGoalTodos = [];
 
-        for (let i = 0; i < myAppraisalsUsers.entities.length; i++) {
-            const entity = myAppraisalsUsers.entities[i];
-            const raw = myAppraisalsUsers.raw.find(r => r.au_appraisalUserId === entity.appraisalUserId);
+        for (let i = 0; i < myAppraisalsUsersResult.entities.length; i++) {
+            const entity = myAppraisalsUsersResult.entities[i];
+            const raw = myAppraisalsUsersResult.raw.find(r => r.au_appraisalUserId === entity.appraisalUserId);
 
             const cqTotal = parseInt(raw?.cqTotal || '0', 10);
             const compCompleted = parseInt(raw?.competencyCompleted || '0', 10);
             const goalTotal = parseInt(raw?.goalTotal || '0', 10);
             const goalCompleted = parseInt(raw?.goalCompleted || '0', 10);
-
-            console.log("DEBUG TODO - Appraisal:", entity.appraisal.title);
-            console.log("DEBUG TODO - Status:", entity.status, "| Raw:", JSON.stringify(raw));
-            console.log("DEBUG TODO - Counts:", { cqTotal, compCompleted, goalTotal, goalCompleted });
 
             // Competency is pending only if there are questions and not all are graded
             const isCompetencyPending = cqTotal > 0 && compCompleted < cqTotal;
@@ -99,32 +104,20 @@ export class TodoService {
             assignmentId: ra.assignmentId,
         }));
 
-        // 3. Team Member Appraisals (leader only) (where I am a leader of their department, and their AppraisalUser status != 'finished' for goals/competency by ME)
-        // To simplify for MVP, we just count them.
-        const myLeaderDeps = await this.hramsUserDepartmentService.getHramsUserDepartmentsByUserId(userId);
-        const leaderDeptIds = myLeaderDeps.filter(d => d.isLeader).map(d => d.department.departmentId);
-
+        // 3. Team Member Appraisals (leader only)
         let teamCompetencyTodos = [];
         let teamGoalTodos = [];
 
         if (leaderDeptIds.length > 0) {
-            // Find all team members
             const allTeamDeptIds = new Set<string>();
             for (const deptId of leaderDeptIds) {
-                allTeamDeptIds.add(deptId); // Include the leader's own department
+                allTeamDeptIds.add(deptId);
                 const descendants = await this.departmentService.getDescendants(deptId);
                 descendants.forEach(d => allTeamDeptIds.add(d.departmentId));
             }
 
-            console.log("DEBUG LEADER - leaderDeptIds:", leaderDeptIds);
-            console.log("DEBUG LEADER - allTeamDeptIds:", Array.from(allTeamDeptIds));
-            console.log("DEBUG LEADER - userId:", userId);
-
             if (allTeamDeptIds.size > 0) {
-                // To find if I (the leader) have pending tasks, we must check:
-                // 1. Competency: Does the leader lack CA entries for any of the questions?
-                // 2. Goal: Are there registered Goals for this appraisalUser where the leader lacks GA entries?
-                const teamAppraisalUsers = await this.appraisalUserRepo
+                const teamAppraisalUsersQuery = this.appraisalUserRepo
                     .createQueryBuilder('au')
                     .innerJoinAndSelect('au.appraisal', 'appraisal')
                     .innerJoin('au.owner', 'owner')
@@ -135,8 +128,25 @@ export class TodoService {
                     .leftJoin('goals.goalAssessmentBy', 'ga_leader', 'ga_leader.gradedBy = :userId AND ga_leader.goalId = goals."goalId"', { userId })
                     .where('appraisal.status = :ongoing', { ongoing: 'ongoing' })
                     .andWhere('hud.departmentId IN (:...deptIds)', { deptIds: Array.from(allTeamDeptIds) })
-                    .andWhere('owner.userId != :userId', { userId })
-                    // We remove au.status = 'submitted' check to ensure leaders can evaluate regardless of team submission status
+                    .andWhere('owner.userId != :userId', { userId });
+
+                // Corrected Rank Filtering Logic:
+                // If 0 is CEO (Top). Smaller number = more senior.
+                // User says: Max Rank 2 should block Rank 1 and 2.
+                // This means: Allowed if rank > 2.
+                // And for Min Rank (Bottom limit): Allowed if rank <= minGradeRank.
+                if (!isAdmin) {
+                    teamAppraisalUsersQuery.andWhere(
+                        '(appraisal.minGradeRank IS NULL OR :myRank <= appraisal.minGradeRank)',
+                        { myRank },
+                    );
+                    teamAppraisalUsersQuery.andWhere(
+                        '(appraisal.maxGradeRank IS NULL OR :myRank >= appraisal.maxGradeRank)',
+                        { myRank },
+                    );
+                }
+
+                const teamAppraisalUsersResult = await teamAppraisalUsersQuery
                     .addSelect('COUNT(DISTINCT cq."competencyId")', 'cqTotal')
                     .addSelect('COUNT(DISTINCT CASE WHEN ca_leader.grade IS NOT NULL AND ca_leader.grade != \'\' THEN ca_leader.assessmentId END)', 'competencyCompleted')
                     .addSelect('COUNT(DISTINCT goals."goalId")', 'goalTotal')
@@ -145,17 +155,11 @@ export class TodoService {
                     .addGroupBy('appraisal.appraisalId')
                     .getRawAndEntities();
 
-                console.log("DEBUG LEADER - teamAppraisalUsers count:", teamAppraisalUsers.entities.length);
-                console.log("DEBUG LEADER - raw rows:", teamAppraisalUsers.raw.length);
-
-                // Group them by appraisal if there's remaining work
                 const teamAppraisalMap = new Map();
 
-                for (let i = 0; i < teamAppraisalUsers.entities.length; i++) {
-                    const entity = teamAppraisalUsers.entities[i];
-                    const raw = teamAppraisalUsers.raw.find(r => r.au_appraisalUserId === entity.appraisalUserId);
-
-                    console.log("DEBUG LEADER TEAM MEMBER:", entity.appraisalUserId, "raw:", JSON.stringify(raw));
+                for (let i = 0; i < teamAppraisalUsersResult.entities.length; i++) {
+                    const entity = teamAppraisalUsersResult.entities[i];
+                    const raw = teamAppraisalUsersResult.raw.find(r => r.au_appraisalUserId === entity.appraisalUserId);
 
                     const cqTotal = parseInt(raw?.cqTotal || '0', 10);
                     const compCompleted = parseInt(raw?.competencyCompleted || '0', 10);

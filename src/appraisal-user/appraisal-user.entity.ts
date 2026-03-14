@@ -24,8 +24,7 @@ export class AppraisalUser {
   appraisalUserId: string;
 
   @Column({ default: null, nullable: true })
-  status: string; // "submitted" | null
-
+  status: string; //null | 'self-submitted' | "submitted"
   @CreateDateColumn()
   created: Date;
 

@@ -73,9 +73,10 @@ export class GoalService {
 
       const goals = await this.goalRepository.find({
         where: {
-          appraisalUser: { owner: { userId } },
-          goalType: 'personal', // Filter for personal goals only
-          // appraisal: { appraisalId },
+          appraisalUser: {
+            owner: { userId },
+            appraisal: { appraisalId },
+          },
         },
         relations: ['appraisalUser'],
       });
@@ -162,13 +163,10 @@ export class GoalService {
           console.log(`[GoalService] Processing member: ${member.user_userId} for Appraisal: ${createCommonGoalPayload.appraisalId}`);
 
           if (appraisalUser) {
-            console.log(`[GoalService] Found AppraisalUser Status: ${appraisalUser.status}`);
-            if (appraisalUser.status === 'submitted' || appraisalUser.status === 'finished') {
-              console.log(`[GoalService] Resetting status to ongoing...`);
-              await this.appraisalUserService.updateAppraisalUser(appraisalUser.appraisalUserId, { status: 'ongoing' });
-            }
+            console.log(`[GoalService] Processing for member: ${member.user_userId}, Current Status: ${appraisalUser.status}`);
+            // Status reset removed as per user request to prevent re-doing assessments
           } else {
-            console.log(`[GoalService] AppraisalUser NOT FOUND`);
+            console.log(`[GoalService] AppraisalUser NOT FOUND for member: ${member.user_userId}`);
           }
 
           return this.createGoal(

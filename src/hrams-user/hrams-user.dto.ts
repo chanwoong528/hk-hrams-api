@@ -14,6 +14,9 @@ export class CreateHramsUserPayload {
 
   @ApiPropertyOptional({ description: '초기 비밀번호 (미입력시 기본값 자동 생성)', example: 'password123!' })
   pw?: string;
+
+  @ApiPropertyOptional({ description: '직군 (개발, 디자인 등)', example: 'development' })
+  jobGroup?: string;
 }
 
 export class HramsUserWithDepartments extends HramsUser {
@@ -44,4 +47,7 @@ export class UpdateHramsUserPayload {
 
   @ApiPropertyOptional({ description: '사용자 직급/레벨', example: 'G2' })
   lv?: string;
+
+  @ApiPropertyOptional({ description: '직군 (개발, 디자인 등)', example: 'development' })
+  jobGroup?: string;
 }

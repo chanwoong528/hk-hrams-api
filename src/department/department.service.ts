@@ -284,4 +284,27 @@ export class DepartmentService {
       this.customException.handleException(error as QueryFailedError | Error);
     }
   }
+
+  async deleteDepartment(id: string): Promise<void> {
+    try {
+      const department = await this.departmentRepository.findOne({
+        where: { departmentId: id },
+        relations: ['children'],
+      });
+
+      if (!department) {
+        throw new NotFoundException('Department not found');
+      }
+
+      if (department.children && department.children.length > 0) {
+        throw new Error('Cannot delete department with sub-departments');
+      }
+
+      await this.departmentRepository.remove(department);
+    } catch (error: unknown) {
+      this.customException.handleException(
+        error as QueryFailedError | Error | NotFoundException,
+      );
+    }
+  }
 }

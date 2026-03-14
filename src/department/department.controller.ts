@@ -7,6 +7,7 @@ import {
   Get,
   Query,
   UseGuards,
+  Delete,
 } from '@nestjs/common';
 import { DepartmentService } from './department.service';
 import { Department } from './department.entity';
@@ -83,4 +84,17 @@ export class DepartmentController {
   // async updateManyDepartments(
   //   @Body() updateManyDepartmentsPayload: UpdateManyDepartmentsPayload[],
   // ): Promise<Response<Department[]>> {}
+
+  @ApiOperation({ summary: '부서 삭제', description: '특정 부서를 삭제합니다.' })
+  @ApiParam({ name: 'id', description: '삭제할 부서 ID' })
+  @ApiResponse({ status: 200, description: '부서 삭제 성공' })
+  @Delete(':id')
+  async deleteDepartment(@Param('id') id: string): Promise<Response<void>> {
+    await this.departmentService.deleteDepartment(id);
+    return {
+      statusCode: 200,
+      message: 'Department deleted successfully',
+      data: undefined,
+    };
+  }
 }

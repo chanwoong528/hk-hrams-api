@@ -37,6 +37,9 @@ export class CompetencyQuestion {
   @JoinColumn({ name: 'departmentId' })
   department: Department;
 
+  @Column({ nullable: true })
+  jobGroup: string;
+
   @Column()
   createdBy: string;
 

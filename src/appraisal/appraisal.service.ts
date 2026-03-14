@@ -83,7 +83,9 @@ export class AppraisalService {
       .leftJoinAndSelect('appraisalUser.goals', 'goals')
       .leftJoinAndSelect('goals.goalAssessmentBy', 'goalAssessmentBy')
       .leftJoinAndSelect('goalAssessmentBy.gradedByUser', 'gradedByUser')
+      .leftJoinAndSelect('appraisalUser.assessedBy', 'supervisor')
       .leftJoinAndSelect('appraisalUser.appraisalBy', 'appraisalBy') // Added Join
+      .leftJoinAndSelect('appraisalBy.assessedBy', 'finalAssessedBy') // Join assessor info
       .select([
         'appraisal.appraisalId',
         'appraisal.appraisalType',
@@ -93,12 +95,17 @@ export class AppraisalService {
         'appraisal.status',
         'appraisal.created',
         'appraisal.updated',
+        'appraisal.minGradeRank',
+        'appraisal.maxGradeRank',
         'department.departmentName',
         'department.departmentId',
+        'department.rank',
         'appraisalUser.appraisalUserId',
         'appraisalUser.status',
         'owner.userId',
         'owner.koreanName',
+        'supervisor.userId',
+        'supervisor.koreanName',
         'goals.goalId',
         'goals.title',
         'goals.description',
@@ -117,6 +124,8 @@ export class AppraisalService {
         'appraisalBy.assessType',
         'appraisalBy.assessTerm',
         'appraisalBy.assessedById',
+        'finalAssessedBy.userId',
+        'finalAssessedBy.koreanName',
         'appraisalBy.updated', // Added updated column
       ])
       .addSelect((subQuery) => {
@@ -284,9 +293,7 @@ export class AppraisalService {
             comment: selfAssessmentData.comment,
             updated: selfAssessmentData.updated ? selfAssessmentData.updated.toISOString() : undefined
           } : undefined,
-          goals: appraisal.appraisalUsers.flatMap(
-            (appraisalUser) => appraisalUser.goals,
-          ),
+          goals: myAppraisalUser?.goals || [],
         };
       });
     } catch (error: unknown) {

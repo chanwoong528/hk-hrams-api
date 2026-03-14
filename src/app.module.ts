@@ -18,6 +18,7 @@ import { CompetencyQuestionModule } from './competency-question/competency-quest
 import { CompetencyAssessmentModule } from './competency-assessment/competency-assessment.module';
 import { TodoModule } from './todo/todo.module';
 import { EvaluationReportModule } from './evaluation-report/evaluation-report.module';
+import { CompetencyTemplateModule } from './competency-template/competency-template.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { EvaluationReportModule } from './evaluation-report/evaluation-report.mo
     CompetencyAssessmentModule,
     TodoModule,
     EvaluationReportModule,
+    CompetencyTemplateModule,
   ],
   controllers: [AppController],
   providers: [AppService],

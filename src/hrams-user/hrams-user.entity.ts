@@ -26,6 +26,9 @@ export class HramsUser {
   @Column({ default: 'reviewee' })
   lv: string; // reviewer | both | reviewee
 
+  @Column({ nullable: true })
+  jobGroup: string; // "development" | "design" | "product" etc.
+
   @Column({ default: 'active' })
   userStatus: string; // active | inactive | terminated
 

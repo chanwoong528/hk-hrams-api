@@ -28,6 +28,8 @@ export function formatAppraisalNested(
           description: row.appraisal_description || '',
           endDate: row.appraisal_endDate.toISOString(),
           status: row.appraisal_status,
+          minGradeRank: row.appraisal_minGradeRank,
+          maxGradeRank: row.appraisal_maxGradeRank,
           user: [],
         };
         department.appraisal.push(appraisalObj);
@@ -59,13 +61,18 @@ export function formatAppraisalNested(
       if (
         row.appraisalBy_appraisalById
       ) {
-        // Add to general assessments list
+        // Add to general assessments list (exclude self-assessment to avoid duplication)
+        const isSelf = row.appraisalBy_assessedById === row.owner_userId;
         const exists = userObj.assessments.find(a => a.assessedById === row.appraisalBy_assessedById);
-        if (!exists && row.appraisalBy_assessedById) {
+        if (!exists && row.appraisalBy_assessedById && !isSelf) {
           userObj.assessments.push({
             grade: row.appraisalBy_grade || '',
             comment: row.appraisalBy_comment || '',
             assessedById: row.appraisalBy_assessedById,
+            assessedByUser: row.finalAssessedBy_userId ? {
+              userId: row.finalAssessedBy_userId,
+              koreanName: row.finalAssessedBy_koreanName
+            } : undefined,
             updated: row.appraisalBy_updated ? row.appraisalBy_updated.toISOString() : undefined
           });
         }

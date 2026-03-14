@@ -1,40 +1,3 @@
-interface FormattedAppraisal {
-  appraisalId: string;
-  appraisalType: string;
-  title: string;
-  description: string | null;
-  endDate: Date;
-  status: string;
-  // created: Date;
-  // updated: Date;
-  departmentName: string;
-  users: FormattedAppraisalUser[];
-}
-interface FormattedAppraisalUser {
-  appraisalUserId: string;
-  status: string | null;
-  userId: string;
-  koreanName: string;
-  goals: {
-    goalId: string;
-    title: string;
-    description: string;
-    created: Date;
-    updated: Date;
-  }[];
-}
-interface FormattedAppraisal {
-  appraisalId: string;
-  appraisalType: string;
-  title: string;
-  description: string | null;
-  endDate: Date;
-  status: string;
-  // created: Date;
-  // updated: Date;
-  departmentName: string;
-  users: FormattedAppraisalUser[];
-}
 interface RawAppraisalRow {
   appraisal_appraisalId: string;
   appraisal_appraisalType: string;
@@ -44,10 +7,12 @@ interface RawAppraisalRow {
   appraisal_status: string;
   appraisal_created: Date;
   appraisal_updated: Date;
+  appraisal_minGradeRank: number | null;
+  appraisal_maxGradeRank: number | null;
   department_departmentName: string;
   department_departmentId: string;
+  department_rank: number;
   appraisalUser_appraisalUserId: string;
-  appraisalUser_status: string | null;
   appraisalUser_status: string | null;
   // Flattened AppraisalBy fields
   appraisalBy_appraisalById: string | null;
@@ -56,9 +21,13 @@ interface RawAppraisalRow {
   appraisalBy_assessType: string | null;
   appraisalBy_assessTerm: string | null;
   appraisalBy_assessedById: string | null;
+  finalAssessedBy_userId: string | null;
+  finalAssessedBy_koreanName: string | null;
   appraisalBy_updated: Date | null;
   owner_userId: string;
   owner_koreanName: string;
+  supervisor_userId: string | null;
+  supervisor_koreanName: string | null;
   selfCompetencyTotal: string;
   selfCompetencyCompleted: string;
   myCompetencyTotal: string;
@@ -80,7 +49,7 @@ interface Goal {
   goalId: string;
   title: string;
   description: string;
-  created: string; // ISO string (Date 형태로 쓰고 싶다면 Date 로 바꿔도 됨)
+  created: string;
   updated: string;
   goalAssessmentBy?: {
     goalAssessId: string;
@@ -107,6 +76,10 @@ interface User {
     grade: string;
     comment: string;
     assessedById: string;
+    assessedByUser?: {
+      userId: string;
+      koreanName: string;
+    };
     updated?: string;
   }[];
   koreanName: string;
@@ -122,8 +95,10 @@ interface Appraisal {
   appraisalType: string;
   title: string;
   description: string;
-  endDate: string; // ISO string
+  endDate: string;
   status: string;
+  minGradeRank?: number;
+  maxGradeRank?: number;
   user: User[];
 }
 

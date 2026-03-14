@@ -60,6 +60,7 @@ export class HramsUserService {
         created: hrUser.created,
         updated: hrUser.updated,
         userStatus: hrUser.userStatus,
+        jobGroup: hrUser.jobGroup,
         departments: hrUser.hramsUserDepartments.map((hud) => hud.department),
       })) as HramsUserWithDepartments[];
       return {
@@ -141,6 +142,7 @@ export class HramsUserService {
         created: hrUser.created,
         updated: hrUser.updated,
         userStatus: hrUser.userStatus,
+        jobGroup: hrUser.jobGroup,
         departments: hrUser.hramsUserDepartments.map((hud) => hud.department),
       })) as HramsUserWithDepartments[];
 
